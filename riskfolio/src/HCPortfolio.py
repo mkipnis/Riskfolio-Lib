@@ -1,11 +1,8 @@
-""""""  #
+# Copyright (c) 2020-2026, Dany Cajas
+# All rights reserved.
+# This work is licensed under BSD 3-Clause "New" or "Revised" License.
+# License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
 
-"""
-Copyright (c) 2020-2026, Dany Cajas
-All rights reserved.
-This work is licensed under BSD 3-Clause "New" or "Revised" License.
-License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
-"""
 
 import numpy as np
 import pandas as pd
@@ -51,6 +48,10 @@ class HCPortfolio(object):
     kappa_g : float, optional
         Deformation parameter of RLVaR and RLDaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver_rl: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
         The default value is None.
@@ -72,18 +73,23 @@ class HCPortfolio(object):
         b_sim=None,
         kappa=0.30,
         kappa_g=None,
+        p_em=2,
+        p_esm=2,
         solver_rl="CLARABEL",
         solvers=["CLARABEL", "SCS", "ECOS"],
         w_max=None,
         w_min=None,
     ):
-        self._returns = returns
+        self.returns = returns
         self.alpha = alpha
         self.a_sim = a_sim
         self.beta = beta
         self.b_sim = b_sim
-        self._kappa = kappa
-        self._kappa_g = kappa_g
+        self.kappa = kappa
+        self.kappa_g = kappa_g
+        self.p_em = p_em
+        self.p_esm = p_esm
+
         self.solver_rl = solver_rl
         self.solvers = solvers
         self.asset_order = None
@@ -99,22 +105,20 @@ class HCPortfolio(object):
 
     @property
     def returns(self):
-        if self._returns is not None and isinstance(self._returns, pd.DataFrame):
-            return self._returns
-        else:
-            raise NameError("returns must be a DataFrame")
+        return self._returns
 
     @returns.setter
     def returns(self, value):
-        if value is not None and isinstance(value, pd.DataFrame):
-            self._returns = value
-        else:
-            raise NameError("returns must be a DataFrame")
+        if value is not None and not isinstance(value, pd.DataFrame):
+            raise TypeError("returns must be None or a DataFrame")
+        self._returns = value
 
     @property
     def assetslist(self):
-        if self._returns is not None and isinstance(self._returns, pd.DataFrame):
-            return self._returns.columns.tolist()
+        if isinstance(self.returns, pd.DataFrame):
+            return self.returns.columns.tolist()
+        elif self.returns is None:
+            return None
 
     @property
     def kappa(self):
@@ -122,19 +126,17 @@ class HCPortfolio(object):
 
     @kappa.setter
     def kappa(self, value):
-        a = value
-        if a >= 1:
-            print(
-                "kappa must be between 0 and 1, values higher or equal to 1 are setting to 0.99"
-            )
-            self._kappa = 0.99
-        elif a <= 0:
-            print(
-                "kappa must be between 0 and 1, values lower or equal to 0 are setting to 0.01"
-            )
-            self._kappa = 0.01
+        if value is not None and not isinstance(value, float):
+            raise TypeError("kappa_g must be None or a float.")
+        elif isinstance(value, float):
+            if value > 0.9999 or value < 0.0001:
+                raise ValueError("kappa_g must be between 0.0001 and 0.9999.")
+            else:
+                self._kappa = value
+        elif value is None:
+            self._kappa = 0.3
         else:
-            self._kappa = a
+            raise ValueError("kappa must be a float between 0.0001 and 0.9999")
 
     @property
     def kappa_g(self):
@@ -142,19 +144,47 @@ class HCPortfolio(object):
 
     @kappa_g.setter
     def kappa_g(self, value):
-        a = value
-        if a >= 1:
-            print(
-                "kappa must be between 0 and 1, values higher or equal to 1 are setting to 0.99"
-            )
-            self._kappa_g = 0.99
-        elif a <= 0:
-            print(
-                "kappa must be between 0 and 1, values lower or equal to 0 are setting to 0.01"
-            )
-            self._kappa_g = 0.01
+        if value is not None and not isinstance(value, float):
+            raise TypeError("kappa_g must be None or a float.")
+        elif isinstance(value, float):
+            if value > 0.9999 or value < 0.0001:
+                raise ValueError("kappa_g must be between 0.0001 and 0.9999.")
+            else:
+                self._kappa_g = value
+        elif value is None:
+            self._kappa_g = None
         else:
-            self._kappa_g = a
+            raise ValueError("kappa_g must be a float between 0.0001 and 0.9999")
+
+    @property
+    def p_em(self):
+        return self._p_em
+
+    @p_em.setter
+    def p_em(self, value):
+        if isinstance(value, int) and value >= 2:
+            self._p_em = value
+        elif value is None:
+            self._p_em = 2
+        else:
+            raise ValueError(
+                "p_em must be an integer higher equal than 2, values lower to 2 are setting to 2"
+            )
+
+    @property
+    def p_esm(self):
+        return self._p_esm
+
+    @p_esm.setter
+    def p_esm(self, value):
+        if isinstance(value, int) and value >= 2:
+            self._p_esm = value
+        elif value is None:
+            self._p_esm = 2
+        else:
+            raise ValueError(
+                "p_esm must be an integer higher equal than 2, values lower to 2 are setting to 2"
+            )
 
     # get naive-risk weights
     def _naive_risk(self, returns, cov, rm="MV", rf=0):
@@ -183,6 +213,8 @@ class HCPortfolio(object):
                         b_sim=self.b_sim,
                         kappa=self.kappa,
                         kappa_g=self.kappa_g,
+                        p_em=self.p_em,
+                        p_esm=self.p_esm,
                         solver=self.solver_rl,
                     )
                 else:
@@ -198,6 +230,8 @@ class HCPortfolio(object):
                         b_sim=self.b_sim,
                         kappa=self.kappa,
                         kappa_g=self.kappa_g,
+                        p_em=self.p_em,
+                        p_esm=self.p_esm,
                         solver=self.solver_rl,
                     )
                 inv_risk[k, 0] = risk
@@ -235,12 +269,14 @@ class HCPortfolio(object):
                     b_sim=self.b_sim,
                     kappa=self.kappa,
                     kappa_g=self.kappa_g,
+                    p_em=self.p_em,
+                    p_esm=self.p_esm,
                 )
 
                 if self.kurt:
                     method_kurt = "hist"
                 elif self.skurt:
-                    method_kurt = "semi"
+                    method_kurt = "hist"
                 else:
                     method_kurt = None
 
@@ -265,12 +301,14 @@ class HCPortfolio(object):
                     b_sim=self.b_sim,
                     kappa=self.kappa,
                     kappa_g=self.kappa_g,
+                    p_em=self.p_em,
+                    p_esm=self.p_esm,
                 )
 
                 if self.kurt:
                     method_kurt = "hist"
                 elif self.skurt:
-                    method_kurt = "semi"
+                    method_kurt = "hist"
                 else:
                     method_kurt = None
                 port.assets_stats(
@@ -369,8 +407,6 @@ class HCPortfolio(object):
         sort_order,
         rm="MV",
         rf=0,
-        upper_bound=None,
-        lower_bound=None,
     ):
         weights = pd.Series(1.0, index=self.assetslist)  # set initial weights to 1
         items = [sort_order]
@@ -477,10 +513,7 @@ class HCPortfolio(object):
         Z,
         rm="MV",
         rf=0,
-        linkage="ward",
         model="HERC",
-        upper_bound=None,
-        lower_bound=None,
     ):
         # Transform linkage to tree and reverse order
         root, nodes = hr.to_tree(Z, rd=True)
@@ -499,7 +532,7 @@ class HCPortfolio(object):
 
         # Loop through k clusters
         for i in nodes[: self.k - 1]:
-            if i.is_leaf() == False:  # skip leaf-nodes
+            if i.is_leaf() is False:  # skip leaf-nodes
                 left = i.get_left().pre_order()  # lambda i: i.id) # get left cluster
                 right = i.get_right().pre_order()  # lambda i: i.id) # get right cluster
                 left_set = set(left)
@@ -786,9 +819,11 @@ class HCPortfolio(object):
             - 'vol': Standard Deviation.
             - 'MV': Variance.
             - 'KT': Square Root Kurtosis.
+            - 'EM': p_em Root of Even Moment of Order 2 * p_em.
             - 'MAD': Mean Absolute Deviation.
             - 'MSV': Semi Standard Deviation.
             - 'SKT': Square Root Semi Kurtosis.
+            - 'ESM': p_esm Root of Even Semi Moment of Order 2 * p_esm.
             - 'FLPM': First Lower Partial Moment (Omega Ratio).
             - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
             - 'VaR': Value at Risk.
@@ -922,7 +957,7 @@ class HCPortfolio(object):
 
         # Covariance matrix
         if method_cov == "custom_cov":
-            if isinstance(custom_cov, pd.DataFrame) == True:
+            if isinstance(custom_cov, pd.DataFrame) is True:
                 if custom_cov.shape[0] != custom_cov.shape[1]:
                     raise NameError("custom_cov must be a square DataFrame")
                 else:
@@ -932,9 +967,9 @@ class HCPortfolio(object):
 
         # Mean vector
         if method_mu == "custom_mu":
-            if isinstance(custom_mu, pd.Series) == True:
+            if isinstance(custom_mu, pd.Series) is True:
                 self.mu = custom_mu.to_frame().T
-            elif isinstance(custom_mu, pd.DataFrame) == True:
+            elif isinstance(custom_mu, pd.DataFrame) is True:
                 if custom_mu.shape[0] > 1 and custom_mu.shape[1] == 1:
                     self.mu = custom_mu.copy()
                 elif custom_mu.shape[0] == 1 and custom_mu.shape[1] > 1:
@@ -1041,8 +1076,6 @@ class HCPortfolio(object):
                 self.sort_order,
                 rm=rm,
                 rf=rf,
-                upper_bound=upper_bound,
-                lower_bound=lower_bound,
             )
         elif model in ["HERC", "HERC2"]:
             # Cluster-based Recursive bisection
@@ -1050,10 +1083,7 @@ class HCPortfolio(object):
                 self.clustering,
                 rm=rm,
                 rf=rf,
-                linkage=linkage,
                 model=model,
-                upper_bound=upper_bound,
-                lower_bound=lower_bound,
             )
         elif model == "NCO":
             # Step-3.1: Determine intra-cluster weights

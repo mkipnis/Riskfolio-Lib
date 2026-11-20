@@ -2,10 +2,14 @@ name: build
 
 on:
     pull_request:
+        paths:
+            - 'riskfolio/**'
     push:
         branches:
             - master
             - 'release/**'
+        paths:
+            - 'riskfolio/**'
         tags:
           - '*'
 
@@ -20,8 +24,8 @@ jobs:
   linters:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
       - run: pip install -r requirements.txt
 
 
@@ -34,7 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-22.04, macos-15, windows-2022 ]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     env:
       RUNNER_OS: ${{ matrix.os }}
@@ -44,7 +48,7 @@ jobs:
       MOSEK_CI_BASE64: ${{ secrets.MOSEK_CI_BASE64 }}
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Set Additional Envs
         run: |
           echo "PYTHON_SUBVERSION=$(echo $PYTHON_VERSION | cut -c 3-)" >> $GITHUB_ENV
@@ -64,7 +68,7 @@ jobs:
 #        run: |
 #          source continuous_integration/test_script.sh
       - name: Upload coverage file
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: ${{env.SINGLE_ACTION_CONFIG == 'True'}}
         with:
           name: coverage
@@ -78,7 +82,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ ubuntu-22.04, macos-15, windows-2022 ]
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        python-version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
 
     env:
       RUNNER_OS: ${{ matrix.os }}
@@ -89,8 +93,8 @@ jobs:
       PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
 
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -102,7 +106,7 @@ jobs:
 
       - name: Set up QEMU  # For aarch64, see https://cibuildwheel.readthedocs.io/en/stable/faq/#emulation
         if: runner.os == 'Linux'
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: all
 
@@ -113,7 +117,7 @@ jobs:
           CIBW_SKIP: "*-win32 *-manylinux_i686 *-musllinux*"
           CIBW_ARCHS_MACOS: x86_64 universal2
           CIBW_ARCHS_LINUX: auto aarch64
-        uses: pypa/cibuildwheel@v3.2.0
+        uses: pypa/cibuildwheel@v4.2.0
 
       - name: Build source
         if: ${{github.event_name == 'push' && env.SINGLE_ACTION_CONFIG == 'True'}}
@@ -130,7 +134,41 @@ jobs:
 
       - name: Upload artifacts to github
         if: ${{github.event_name == 'push' && env.USE_OPENMP != 'True'}}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: wheels-${{ runner.os }}-py${{ matrix.python-version }}
           path: ./wheelhouse
+
+  collect_wheels:
+    needs: build_wheels
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: wheels-*
+          path: wheelhouse
+          merge-multiple: true
+
+      - name: Bundle all wheels in one file
+        shell: bash
+        run: |
+          ls -lah wheelhouse
+          tar -czf Riskfolio-Lib-wheels-${{ github.run_id }}.tar.gz -C wheelhouse .
+
+      - name: Upload single combined artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: wheels-all
+          path: Riskfolio-Lib-wheels-${{ github.run_id }}.tar.gz
+
+      - name: Attach bundle to GitHub Release (only tags)
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: softprops/action-gh-release@v3
+        with:
+          files: Riskfolio-Lib-wheels-${{ github.run_id }}.tar.gz

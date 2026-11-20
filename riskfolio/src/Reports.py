@@ -1,11 +1,8 @@
-""""""  #
+# Copyright (c) 2020-2026, Dany Cajas
+# All rights reserved.
+# This work is licensed under BSD 3-Clause "New" or "Revised" License.
+# License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
 
-"""
-Copyright (c) 2020-2026, Dany Cajas
-All rights reserved.
-This work is licensed under BSD 3-Clause "New" or "Revised" License.
-License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
-"""
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -183,10 +180,10 @@ def jupyter_report(
                                others=0.05,
                                nrow=25)
 
-    .. image:: images/Report_1.png
-    .. image:: images/Report_2.png
-    .. image:: images/Report_3.png
-    .. image:: images/Report_4.png
+    .. image:: ../images/Report_1.png
+    .. image:: ../images/Report_2.png
+    .. image:: ../images/Report_3.png
+    .. image:: ../images/Report_4.png
 
     """
 
@@ -353,7 +350,7 @@ def excel_report(
                         days_per_year=252,
                         name="report")
 
-    .. image:: images/Excel.png
+    .. image:: ../images/Excel.png
 
     """
     n1 = w.shape[0]

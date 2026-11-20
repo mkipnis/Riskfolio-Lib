@@ -1,4 +1,8 @@
-# Copyright (C) 2020-2026 Dany Cajas
+# Copyright (c) 2020-2026 Dany Cajas
+# All rights reserved.
+# This work is licensed under BSD 3-Clause "New" or "Revised" License.
+# License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
+
 
 import os
 import numpy as np
@@ -7,7 +11,7 @@ from pybind11.setup_helpers import Pybind11Extension, build_ext
 from setuptools import setup
 
 MAJOR = 7
-MINOR = 2
+MINOR = 4
 MICRO = 1
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, MICRO)
 
@@ -24,7 +28,7 @@ version = '%(version)s'
 
 write_version_py()
 
-DESCRIPTION = "Portfolio Optimization and Quantitative Strategic Asset Allocation in Python"
+DESCRIPTION = "Portfolio Optimization in Python"
 
 with open("README.md", encoding='UTF-8') as fh:
     LONG_DESCRIPTION = fh.read()
@@ -32,11 +36,11 @@ with open("README.md", encoding='UTF-8') as fh:
 DISTNAME = 'riskfolio-lib'
 MAINTAINER = 'Dany Cajas'
 MAINTAINER_EMAIL = 'dany.cajas.n@uni.pe'
-URL = 'https://github.com/dcajasn/Riskfolio-Lib'
+URL = 'https://portfoliooptimization.org'
 LICENSE = 'BSD (3-clause)'
-KEYWORDS = 'finance, portfolio, optimization, quant, asset, allocation, investing'
-DOWNLOAD_URL = 'https://github.com/dcajasn/Riskfolio-Lib.git'
-PYTHON_REQUIRES = ">=3.9"
+KEYWORDS = 'finance, portfolio, optimization, quant, asset allocation, investing'
+DOWNLOAD_URL = 'https://github.com/dcajasn/Riskfolio-Lib'
+PYTHON_REQUIRES = ">=3.10"
 
 INSTALL_REQUIRES = [
     'numpy>=1.26.4',
@@ -45,14 +49,14 @@ INSTALL_REQUIRES = [
     'matplotlib>=3.9.2',
     'clarabel>=0.11.1',
     'SCS>=3.2.7',
-    'cvxpy>=1.6.6',
-    'scikit-learn>=1.3.0',
+    'cvxpy>=1.7.2',
+    'scikit-learn>=1.7.0',
     'statsmodels>=0.14.5',
     'arch>=7.2',
     'xlsxwriter>=3.2.2',
     'networkx>=3.4.2',
     'astropy>=6.1.3',
-    'pybind11>=2.13.6',
+    'pybind11>=3.1.0',
     'vectorbt>=0.28.0',
 ]
 
@@ -65,13 +69,11 @@ PACKAGES = [
 CLASSIFIERS = [
     'Intended Audience :: Financial and Insurance Industry',
     'Intended Audience :: Science/Research',
-    'Programming Language :: Python :: 3.9',
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
     'Programming Language :: Python :: 3.13',
     'Programming Language :: Python :: 3.14',
-    'License :: OSI Approved :: BSD License',
     'Topic :: Office/Business :: Financial :: Investment',
     'Topic :: Office/Business :: Financial',
     'Topic :: Scientific/Engineering :: Mathematics',
@@ -80,13 +82,13 @@ CLASSIFIERS = [
     'Operating System :: MacOS'
 ]
 
-
 if __name__ == "__main__":
 
     from setuptools import Extension, setup, find_packages
     import sys
 
-    if sys.version_info[:2] < (3, int(PYTHON_REQUIRES[-1])):
+    _min_version = PYTHON_REQUIRES.lstrip(">=").split(".")
+    if sys.version_info[:2] < (int(_min_version[0]), int(_min_version[1])):
         raise RuntimeError("Riskfolio-Lib requires python " + PYTHON_REQUIRES)
 
     # Obtain the numpy include directory.  This logic works across numpy versions.
@@ -99,21 +101,20 @@ if __name__ == "__main__":
     eigen_path = os.path.abspath(os.path.join('.', 'lib', 'eigen-3.4.0', 'Eigen'))
     eigen_core_path = os.path.abspath(os.path.join('.', 'lib', 'eigen-3.4.0'))
     eigen_unsupported_path = os.path.abspath(os.path.join('.', 'lib', 'eigen-3.4.0', 'unsupported'))
-    spectra_path = os.path.abspath(os.path.join('.', 'lib', 'spectra-1.0.1', 'include'))
     external_path = os.path.abspath(os.path.join('.', 'riskfolio', 'external'))
 
     sources = [os.path.join('riskfolio', 'external', 'cpp_functions_bindings.cpp')]
     if WIN:
         external_module = Pybind11Extension('riskfolio.external.functions',
             sources=sources,
-            include_dirs = [numpy_include, eigen_path, eigen_core_path, eigen_unsupported_path, spectra_path,external_path,external_path],
-            extra_compile_args = ['-O2', '-Ofast', '-msse2'],
+            include_dirs = [numpy_include, eigen_path, eigen_core_path, eigen_unsupported_path, external_path, external_path],
+            extra_compile_args = ['/O2', '/fp:fast'],
             define_macros = [('VERSION_INFO', VERSION)],
             )
     else:
         external_module = Pybind11Extension('riskfolio.external.functions',
             sources=sources,
-            include_dirs = [numpy_include, eigen_path, eigen_core_path, eigen_unsupported_path, spectra_path, external_path,external_path],
+            include_dirs = [numpy_include, eigen_path, eigen_core_path, eigen_unsupported_path, external_path,external_path],
             extra_compile_args = ['-O2', '-Ofast'],
             define_macros = [('VERSION_INFO', VERSION)],
             )
@@ -136,7 +137,7 @@ if __name__ == "__main__":
         install_requires=INSTALL_REQUIRES,
         packages=PACKAGES,
         classifiers=CLASSIFIERS,
-        project_urls={"Documentation": "https://riskfolio-lib.readthedocs.io/en/latest/",
+        project_urls={"Documentation": "https://portfoliooptimization.org",
                       "Issues": "https://github.com/dcajasn/Riskfolio-Lib/issues",
                       "Personal website": "http://financioneroncios.wordpress.com",
                       },

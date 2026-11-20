@@ -1,11 +1,8 @@
-""""""  #
+# Copyright (c) 2020-2026, Dany Cajas
+# All rights reserved.
+# This work is licensed under BSD 3-Clause "New" or "Revised" License.
+# License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
 
-"""
-Copyright (c) 2020-2026, Dany Cajas
-All rights reserved.
-This work is licensed under BSD 3-Clause "New" or "Revised" License.
-License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
-"""
 
 import numpy as np
 import pandas as pd
@@ -14,8 +11,7 @@ import riskfolio.src.OwaWeights as owa
 import riskfolio.src.ParamsEstimation as pe
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
-from scipy.linalg import null_space
-from numpy.linalg import pinv
+from scipy.linalg import null_space, pinv
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
 import warnings
@@ -25,6 +21,8 @@ __all__ = [
     "SemiDeviation",
     "Kurtosis",
     "SemiKurtosis",
+    "EvenMoment",
+    "EvenSemiMoment",
     "VaR_Hist",
     "CVaR_Hist",
     "WR",
@@ -76,8 +74,8 @@ def MAD(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Returns
     -------
@@ -91,6 +89,8 @@ def MAD(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T, N = a.shape
     mu = np.mean(a, axis=0).reshape(1, -1)
@@ -112,8 +112,8 @@ def SemiDeviation(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -131,6 +131,8 @@ def SemiDeviation(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T, N = a.shape
     mu = np.mean(a, axis=0).reshape(1, -1)
@@ -152,8 +154,8 @@ def Kurtosis(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -171,6 +173,8 @@ def Kurtosis(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T, N = a.shape
     mu = np.mean(a, axis=0).reshape(1, -1)
@@ -192,8 +196,8 @@ def SemiKurtosis(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -211,6 +215,8 @@ def SemiKurtosis(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T, N = a.shape
     mu = np.mean(a, axis=0).reshape(1, -1)
@@ -218,6 +224,102 @@ def SemiKurtosis(X):
     value = mu - a
     value = np.sum(np.power(value[np.where(value >= 0)], 4)) / T
     value = np.power(value, 0.5).item()
+
+    return value
+
+
+def EvenMoment(X, p: int = 2):
+    r"""
+    Calculate the p-th Root of Even Moment of order 2 * p of a returns series.
+
+    .. math::
+        \text{EM}_{p}(X) = \left [ \frac{1}{T}\sum_{t=1}^{T}
+        (X_{t} - \mathbb{E}(X_{t}))^{2p} \right ]^{1/p}
+
+    Parameters
+    ----------
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
+
+    p : int, optional
+        Order of the Even Moment. It must be an integer greater than or equal
+        to 2. The default is 2.
+
+    Raises
+    ------
+    ValueError
+        When the value cannot be calculated.
+
+    Returns
+    -------
+    value : float
+        p-th Root Even Moment of order 2 * p of a returns series.
+    """
+
+    a = np.array(X, ndmin=2)
+    if a.shape[0] == 1 and a.shape[1] > 1:
+        a = a.T
+    if a.shape[0] > 1 and a.shape[1] > 1:
+        raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
+    if isinstance(p, int) is False or p < 2:
+        raise ValueError("p must be an integer higher equal than 2")
+
+    T, N = a.shape
+    mu = np.mean(a, axis=0).reshape(1, -1)
+    mu = np.repeat(mu, T, axis=0)
+    value = mu - a
+    value = np.linalg.norm(value.flatten(), ord=int(2 * p))
+    value = np.power(value, 2).item() / T ** (1 / p)
+
+    return value
+
+
+def EvenSemiMoment(X, p: int = 2):
+    r"""
+    Calculate the p-th Root of Semi Even Moment of order 2 * p of a returns series.
+
+    .. math::
+        \text{ESM}_{p}(X) = \left [ \frac{1}{T}\sum_{t=1}^{T}
+        \min (X_{t} - \mathbb{E}(X_{t}), 0)^{2p} \right ]^{1/p}
+
+    Parameters
+    ----------
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
+
+    p : int, optional
+        Order of the Semi Even Moment. It must be an integer greater than or
+        equal to 2. The default is 2.
+
+    Raises
+    ------
+    ValueError
+        When the value cannot be calculated.
+
+    Returns
+    -------
+    value : float
+        p-th Root Semi Even Moment of order 2 * p of a returns series.
+    """
+
+    a = np.array(X, ndmin=2)
+    if a.shape[0] == 1 and a.shape[1] > 1:
+        a = a.T
+    if a.shape[0] > 1 and a.shape[1] > 1:
+        raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
+    if isinstance(p, int) is False or p < 2:
+        raise ValueError("p must be an integer higher equal than 2")
+
+    T, N = a.shape
+    mu = np.mean(a, axis=0).reshape(1, -1)
+    mu = np.repeat(mu, T, axis=0)
+    value = mu - a
+    value = np.linalg.norm(value[np.where(value >= 0)].flatten(), ord=int(2 * p))
+    value = np.power(value, 2).item() / T ** (1 / p)
 
     return value
 
@@ -232,8 +334,8 @@ def VaR_Hist(X, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of VaR. The default is 0.05.
     Raises
@@ -252,6 +354,8 @@ def VaR_Hist(X, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     sorted_a = np.sort(a, axis=0)
     index = int(np.ceil(alpha * len(sorted_a)) - 1)
@@ -272,8 +376,8 @@ def CVaR_Hist(X, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of CVaR. The default is 0.05.
 
@@ -293,6 +397,8 @@ def CVaR_Hist(X, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     sorted_a = np.sort(a, axis=0)
     index = int(np.ceil(alpha * len(sorted_a)) - 1)
@@ -315,8 +421,8 @@ def WR(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -335,6 +441,8 @@ def WR(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     sorted_a = np.sort(a, axis=0)
     value = -sorted_a[0]
@@ -361,12 +469,13 @@ def LPM(X, MAR=0, p=1):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     MAR : float, optional
         Minimum acceptable return. The default is 0.
-    p : float, optional can be {1,2}
-        order of the :math:`\text{LPM}`. The default is 1.
+    p : int or float, optional
+        Order of the :math:`\text{LPM}`. Only 1 and 2 are supported. The
+        default is 1.
 
     Raises
     ------
@@ -385,6 +494,8 @@ def LPM(X, MAR=0, p=1):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
     if p not in [1, 2]:
         raise ValueError("p can only be 1 or 2")
 
@@ -414,8 +525,8 @@ def Entropic_RM(X, z=1, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     z : float, optional
         Risk aversion parameter, must be greater than zero. The default is 1.
     alpha : float, optional
@@ -438,6 +549,8 @@ def Entropic_RM(X, z=1, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     value = np.mean(np.exp(-1 / z * a), axis=0)
     value = z * (np.log(value) + np.log(1 / alpha))
@@ -447,14 +560,34 @@ def Entropic_RM(X, z=1, alpha=0.05):
 
 
 def _Entropic_RM(z, X, alpha=0.05):
+    r"""
+    Evaluate the entropic risk objective for a returns series.
+
+    Parameters
+    ----------
+    z : float or array_like
+        Positive risk aversion parameter. A one-element array-like is accepted
+        when called by the optimizer.
+    X : array_like
+        Finite numeric returns series with a single column or row.
+    alpha : float, optional
+        Significance level. The default is 0.05.
+
+    Returns
+    -------
+    value : float
+        Entropic risk measure.
+    """
     a = np.array(X, ndmin=2)
     if a.shape[0] == 1 and a.shape[1] > 1:
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     a = a.flatten()
-    value = np.mean(np.exp(-1 / z * a), axis=0)
+    value = np.mean(np.exp(-np.multiply(1 / z, a)), axis=0)
     value = z * (np.log(value) + np.log(1 / alpha))
     value = np.array(value).item()
 
@@ -475,8 +608,8 @@ def EVaR_Hist(X, alpha=0.05, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of EVaR. The default is 0.05.
     solver: str, optional
@@ -507,49 +640,60 @@ def EVaR_Hist(X, alpha=0.05, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T, N = a.shape
 
-    # Primal Formulation
-    t = cp.Variable((1, 1))
-    z = cp.Variable((1, 1), nonneg=True)
-    ui = cp.Variable((T, 1))
-    ones = np.ones((T, 1))
+    warnings.filterwarnings("ignore")
 
-    constraints = [
-        cp.sum(ui) <= z,
-        cp.ExpCone(-a - t, ones @ z, ui),
-    ]
+    # Primal Formulation with Scipy
+    bnd = Bounds([1e-24], [np.inf])
+    result = minimize(
+        _Entropic_RM, [1], args=(a, alpha), method="SLSQP", bounds=bnd, tol=1e-12
+    )
 
-    risk = t + z * np.log(1 / (alpha * T))
-    objective = cp.Minimize(risk * 1000)
-    prob = cp.Problem(objective, constraints)
-
-    try:
-        for solver_i in solvers:
-            prob.solve(solver=solver_i)
-            if risk.value is not None:
-                break
-    except:
-        pass
-
-    if risk.value is None:
-        value = None
-    else:
-        value = risk.value.item()
-        t = z.value.item()
-
-    if value is None:
-        warnings.filterwarnings("ignore")
-
-        # Primal Formulation with Scipy
-        bnd = Bounds([1e-24], [np.inf])
-        result = minimize(
-            _Entropic_RM, [1], args=(X, alpha), method="SLSQP", bounds=bnd, tol=1e-12
-        )
+    if result.success is True:
         t = result.x
         t = t.item()
-        value = _Entropic_RM(t, X, alpha)
+        value = _Entropic_RM(t, a, alpha)
+    elif result.success is False:
+        t = None
+        value = None
+
+    if value is None:
+        # Primal Formulation with cvxpy
+        t = cp.Variable((1, 1))
+        z = cp.Variable((1, 1), nonneg=True)
+        ui = cp.Variable((T, 1))
+        ones = np.ones((T, 1))
+
+        constraints = [
+            cp.sum(ui) <= z,
+            cp.ExpCone(-a - t, ones @ z, ui),
+        ]
+
+        risk = t + z * np.log(1 / (alpha * T))
+        objective = cp.Minimize(risk * 1000)
+        prob = cp.Problem(objective, constraints)
+
+        for solver_i in solvers:
+            try:
+                prob.solve(solver=solver_i)
+                if risk.value is not None and np.isfinite(risk.value):
+                    break
+            except cp.SolverError:
+                continue
+
+        if risk.value is None:
+            t = None
+            value = None
+        else:
+            t = z.value.item()
+            value = risk.value.item()
+
+    if value is None:
+        raise ValueError("EVaR cannot be calculated")
 
     return (value, t)
 
@@ -577,8 +721,8 @@ def RLVaR_Hist(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of EVaR. The default is 0.05.
     kappa : float, optional
@@ -606,15 +750,17 @@ def RLVaR_Hist(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
         solvers.remove(solver)
         solvers.insert(0, solver)
 
-    a = np.array(X * 100, ndmin=2)
+    a = np.array(X, ndmin=2)
     if a.shape[0] == 1 and a.shape[1] > 1:
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T, N = a.shape
 
-    # Dual Formulation
+    # Dual Formulation with cvxpy
     Z = cp.Variable((T, 1))
     nu = cp.Variable((T, 1))
     tau = cp.Variable((T, 1))
@@ -624,6 +770,8 @@ def RLVaR_Hist(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
 
     constraints = [
         cp.sum(Z) == 1,
+        Z >= 0,
+        Z <= 1,
         cp.sum(nu - tau) / (2 * kappa) <= c,
         cp.PowCone3D(nu, ones, Z, 1 / (1 + kappa)),
         cp.PowCone3D(Z, ones, tau, 1 - kappa),
@@ -633,13 +781,13 @@ def RLVaR_Hist(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
     objective = cp.Maximize(risk)
     prob = cp.Problem(objective, constraints)
 
-    try:
-        for solver_i in solvers:
+    for solver_i in solvers:
+        try:
             prob.solve(solver=solver_i)
-            if risk.value is not None:
+            if risk.value is not None and np.isfinite(risk.value):
                 break
-    except:
-        pass
+        except cp.SolverError:
+            continue
 
     if risk.value is None:
         value = None
@@ -647,7 +795,7 @@ def RLVaR_Hist(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
         value = risk.value.item()
 
     if value is None:
-        # Primal Formulation
+        # Primal Formulation with cvxpy
         t = cp.Variable((1, 1))
         z = cp.Variable((1, 1))
         omega = cp.Variable((T, 1))
@@ -676,20 +824,23 @@ def RLVaR_Hist(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
         objective = cp.Minimize(risk * 1000)
         prob = cp.Problem(objective, constraints)
 
-        try:
-            for solver_i in solvers:
+        for solver_i in solvers:
+            try:
                 prob.solve(solver=solver_i)
-                if risk.value is not None:
+                if risk.value is not None and np.isfinite(risk.value):
                     break
-        except:
-            pass
+            except cp.SolverError:
+                continue
 
         if risk.value is None:
-            value = 0
+            value = None
         else:
             value = risk.value.item()
 
-    return value / 100
+    if value is None:
+        raise ValueError("EVaR cannot be calculated")
+
+    return value
 
 
 def MDD_Abs(X):
@@ -703,8 +854,8 @@ def MDD_Abs(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -723,6 +874,8 @@ def MDD_Abs(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -751,8 +904,8 @@ def ADD_Abs(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -771,6 +924,8 @@ def ADD_Abs(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -808,8 +963,8 @@ def DaR_Abs(X, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size..
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of DaR. The default is 0.05.
 
@@ -830,6 +985,8 @@ def DaR_Abs(X, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -866,8 +1023,8 @@ def CDaR_Abs(X, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size..
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of CDaR. The default is 0.05.
 
@@ -888,6 +1045,8 @@ def CDaR_Abs(X, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -922,8 +1081,8 @@ def EDaR_Abs(X, alpha=0.05, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size..
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of EDaR. The default is 0.05.
 
@@ -945,6 +1104,8 @@ def EDaR_Abs(X, alpha=0.05, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -973,8 +1134,8 @@ def RLDaR_Abs(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of EVaR. The default is 0.05.
     kappa : float, optional
@@ -1000,6 +1161,8 @@ def RLDaR_Abs(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -1028,8 +1191,8 @@ def UCI_Abs(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -1048,6 +1211,8 @@ def UCI_Abs(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = np.insert(np.array(a), 0, 1, axis=0)
     NAV = np.cumsum(np.array(prices), axis=0)
@@ -1083,8 +1248,8 @@ def MDD_Rel(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -1103,6 +1268,8 @@ def MDD_Rel(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1132,8 +1299,8 @@ def ADD_Rel(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -1152,6 +1319,8 @@ def ADD_Rel(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1189,8 +1358,8 @@ def DaR_Rel(X, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size..
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of DaR. The default is 0.05.
 
@@ -1211,6 +1380,8 @@ def DaR_Rel(X, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("X must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1247,8 +1418,8 @@ def CDaR_Rel(X, alpha=0.05):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size..
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of CDaR. The default is 0.05.
 
@@ -1269,6 +1440,8 @@ def CDaR_Rel(X, alpha=0.05):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("X must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1303,8 +1476,8 @@ def EDaR_Rel(X, alpha=0.05, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size..
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of EDaR. The default is 0.05.
 
@@ -1326,6 +1499,8 @@ def EDaR_Rel(X, alpha=0.05, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("X must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1354,8 +1529,8 @@ def RLDaR_Rel(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of RLDaR. The default is 0.05.
     kappa : float, optional
@@ -1381,6 +1556,8 @@ def RLDaR_Rel(X, alpha=0.05, kappa=0.3, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("X must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1409,8 +1586,8 @@ def UCI_Rel(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -1429,6 +1606,8 @@ def UCI_Rel(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     prices = 1 + np.insert(np.array(a), 0, 0, axis=0)
     NAV = np.cumprod(prices, axis=0)
@@ -1458,8 +1637,8 @@ def GMD(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -1478,6 +1657,8 @@ def GMD(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_gmd(T)
@@ -1492,12 +1673,13 @@ def TG(X, alpha=0.05, a_sim=100):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of Tail Gini. The default is 0.05.
-    a_sim : float, optional
-        Number of CVaRs used to approximate Tail Gini. The default is 100.
+    a_sim : int, optional
+        Integer number of CVaRs used to approximate Tail Gini. The default is
+        100.
 
     Raises
     ------
@@ -1516,6 +1698,8 @@ def TG(X, alpha=0.05, a_sim=100):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_tg(T, alpha, a_sim)
@@ -1530,8 +1714,8 @@ def RG(X):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
 
     Raises
     ------
@@ -1550,6 +1734,8 @@ def RG(X):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_rg(T)
@@ -1560,15 +1746,15 @@ def RG(X):
 
 def VRG(X, alpha=0.05, beta=None):
     r"""
-    Calculate the CVaR range of a returns series.
+    Calculate the VaR range of a returns series.
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of VaR of losses. The default is 0.05.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of VaR of gains. If None it duplicates alpha value.
         The default is None.
 
@@ -1589,6 +1775,8 @@ def VRG(X, alpha=0.05, beta=None):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     if beta is None:
         beta = alpha
@@ -1607,11 +1795,11 @@ def CVRG(X, alpha=0.05, beta=None):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of CVaR of losses. The default is 0.05.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of CVaR of gains. If None it duplicates alpha value.
         The default is None.
 
@@ -1632,6 +1820,8 @@ def CVRG(X, alpha=0.05, beta=None):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_cvrg(T, alpha=alpha, beta=beta)
@@ -1646,18 +1836,19 @@ def TGRG(X, alpha=0.05, a_sim=100, beta=None, b_sim=None):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of Tail Gini of losses. The default is 0.05.
-    a_sim : float, optional
-        Number of CVaRs used to approximate Tail Gini of losses. The default is 100.
-    beta : float, optional
+    a_sim : int, optional
+        Integer number of CVaRs used to approximate Tail Gini of losses. The
+        default is 100.
+    beta : float or None, optional
         Significance level of Tail Gini of gains. If None it duplicates alpha value.
         The default is None.
-    b_sim : float, optional
-        Number of CVaRs used to approximate Tail Gini of gains. If None it duplicates a_sim value.
-        The default is None.
+    b_sim : int or None, optional
+        Number of CVaRs used to approximate Tail Gini of gains. If None, it
+        defaults to a_sim. The default is None.
 
     Raises
     ------
@@ -1676,6 +1867,8 @@ def TGRG(X, alpha=0.05, a_sim=100, beta=None, b_sim=None):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_tgrg(T, alpha=alpha, a_sim=a_sim, beta=beta, b_sim=b_sim)
@@ -1690,11 +1883,11 @@ def EVRG(X, alpha=0.05, beta=None, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of EVaR of losses. The default is 0.05.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of EVaR of gains. If None it duplicates alpha value.
         The default is None.
     solver: str, optional
@@ -1718,6 +1911,8 @@ def EVRG(X, alpha=0.05, beta=None, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     if beta is None:
         beta = alpha
@@ -1736,17 +1931,17 @@ def RVRG(X, alpha=0.05, beta=None, kappa=0.3, kappa_g=None, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
     alpha : float, optional
         Significance level of RLVaR of losses. The default is 0.05.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of RLVaR of gains. If None it duplicates alpha value.
         The default is None.
     kappa : float, optional
         Deformation parameter of RLVaR for losses, must be between 0 and 1.
         The default is 0.3.
-    kappa_g : float, optional
+    kappa_g : float or None, optional
         Deformation parameter of RLVaR for gains, must be between 0 and 1.
         The default is None.
     solver: str, optional
@@ -1770,6 +1965,8 @@ def RVRG(X, alpha=0.05, beta=None, kappa=0.3, kappa_g=None, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     if beta is None:
         beta = alpha
@@ -1797,10 +1994,11 @@ def L_Moment(X, k=2):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
-    k : int
-        Order of the l-moment. Must be an integer higher or equal than 1.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
+    k : int, optional
+        Order of the l-moment. Must be an integer greater than or equal to 1.
+        The default is 2.
 
     Raises
     ------
@@ -1819,6 +2017,8 @@ def L_Moment(X, k=2):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_l_moment(T, k=k)
@@ -1834,10 +2034,11 @@ def L_Moment_CRM(X, k=4, method="MSD", g=0.5, max_phi=0.5, solver="CLARABEL"):
 
     Parameters
     ----------
-    X : 1d-array
-        Returns series, must have Tx1 size.
-    k : int
-        Order of the l-moment. Must be an integer higher or equal than 2.
+    X : array_like
+        Finite numeric returns series as a one-dimensional array-like or a row/column vector.
+    k : int, optional
+        Order of the l-moment. Must be an integer greater than or equal to 2.
+        The default is 4.
     method : str, optional
         Method to calculate the weights used to combine the l-moments with
         order higher than 2. The default value is 'MSD'. Possible values are:
@@ -1854,7 +2055,7 @@ def L_Moment_CRM(X, k=4, method="MSD", g=0.5, max_phi=0.5, solver="CLARABEL"):
         The default is 0.5.
     solver: str, optional
         Solver available for CVXPY. Used to calculate 'ME', 'MSS' and 'MSD' weights.
-        The default value is None.
+        The default value is 'CLARABEL'.
 
     Raises
     ------
@@ -1883,6 +2084,8 @@ def L_Moment_CRM(X, k=4, method="MSD", g=0.5, max_phi=0.5, solver="CLARABEL"):
         a = a.T
     if a.shape[0] > 1 and a.shape[1] > 1:
         raise ValueError("returns must have Tx1 size")
+    if not np.all(np.isfinite(a)):
+        raise ValueError("returns must not contain NaN or infinite values")
 
     T = a.shape[0]
     w_ = owa.owa_l_moment_crm(
@@ -1900,8 +2103,10 @@ def NEA(w):
 
     Parameters
     ----------
-    w : DataFrame or Series of shape (n_assets, 1)
-        Portfolio weights, where n_assets is the number of assets.
+    w : array_like
+        Portfolio weights as a one-dimensional sequence or row/column vector.
+        NumPy arrays, pandas Series, and one-column or one-row DataFrames are
+        accepted.
 
     Raises
     ------
@@ -1942,6 +2147,8 @@ def Sharpe_Risk(
     b_sim=None,
     kappa=0.3,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
 ):
     r"""
@@ -1949,23 +2156,29 @@ def Sharpe_Risk(
 
     Parameters
     ----------
-    w : DataFrame or 1d-array of shape (n_assets, 1)
-        Weights matrix, where n_assets is the number of assets.
-    cov : DataFrame of shape (n_assets, n_assets)
-        Covariance matrix, where n_assets is the number of assets.
-    returns : DataFrame or nd-array of shape (n_samples, n_features)
-        Features matrix, where n_samples is the number of samples and
-        n_features is the number of features.
+    w : array_like, optional
+        Portfolio weights as a one-dimensional sequence or row/column vector.
+        Required when ``returns`` has more than one column; otherwise it
+        defaults to a single weight of 1.
+    cov : array_like, optional
+        Covariance matrix of shape (n_assets, n_assets). If None, it is
+        estimated from ``returns``. The default is None.
+    returns : DataFrame, Series, or array_like of shape (n_samples, n_features)
+        Numeric returns for the assets. A pandas Series is treated as one
+        asset; a one-dimensional array-like input is treated as one observation
+        across assets.
     rm : str, optional
         Risk measure used in the denominator of the ratio. The default is
         'MV'. Possible values are:
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': Even Moment of order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': Even Semi Moment of order 2 * p_em.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'VaR': Value at Risk.
@@ -2000,20 +2213,24 @@ def Sharpe_Risk(
     alpha : float, optional
         Significance level of VaR, CVaR, EVaR, RLVaR, DaR, CDaR, EDaR, RLDaR
         and Tail Gini of losses. The default is 0.05.
-    a_sim : float, optional
+    a_sim : int, optional
         Number of CVaRs used to approximate Tail Gini of losses. The default is 100.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of CVaR and Tail Gini of gains. If None it
         duplicates alpha value. The default is None.
-    b_sim : float, optional
+    b_sim : int or None, optional
         Number of CVaRs used to approximate Tail Gini of gains. If None it
         duplicates a_sim value. The default is None.
     kappa : float, optional
         Deformation parameter of RLVaR and RLDaR for losses, must be between 0 and 1.
         The default is 0.3.
-    kappa_g : float, optional
+    kappa_g : float or None, optional
         Deformation parameter of RLVaR and RLDaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports exponential and power cone
         programming. Used to calculate RLVaR and RLDaR. The default value is
@@ -2128,6 +2345,12 @@ def Sharpe_Risk(
         risk = Kurtosis(a)
     elif rm == "SKT":
         risk = SemiKurtosis(a)
+    elif rm == "EM":
+        risk = EvenMoment(a, p=p_em)
+    elif rm == "ESM":
+        risk = EvenSemiMoment(a, p=p_esm)
+    else:
+        raise ValueError("rm must be a valid risk measure, got " + str(rm))
 
     value = risk
 
@@ -2147,14 +2370,15 @@ def Sharpe(
     b_sim=None,
     kappa=0.3,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
 ):
     r"""
     Calculate the Risk Adjusted Return Ratio from a portfolio returns series.
 
     .. math::
-        \text{Sharpe}(X) =  \frac{\mathbb{E}(X) -
-        r_{f}}{\phi(X)}
+        \text{Sharpe}(X) = \frac{\mathbb{E}(X) - r_{f}}{\phi(X)}
 
     Where:
 
@@ -2169,25 +2393,32 @@ def Sharpe(
     Parameters
     ----------
 
-    returns : DataFrame or nd-array of shape (n_samples, n_features)
-        Features matrix, where n_samples is the number of samples and
-        n_features is the number of features.
-    w : DataFrame or 1d-array of shape (n_assets, 1)
-        Weights matrix, where n_assets is the number of assets.
-    mu : DataFrame or nd-array of shape (1, n_assets)
-        Vector of expected returns, where n_assets is the number of assets.
-    cov : DataFrame of shape (n_assets, n_assets)
-        Covariance matrix, where n_assets is the number of assets.
+    returns : DataFrame, Series, or array_like of shape (n_samples, n_features)
+        Numeric returns for the assets. A pandas Series is treated as one
+        asset; a one-dimensional array-like input is treated as one observation
+        across assets.
+    w : array_like, optional
+        Portfolio weights as a one-dimensional sequence or row/column vector.
+        Required when ``returns`` has more than one column; otherwise it
+        defaults to a single weight of 1.
+    mu : array_like, optional
+        Expected returns as a one-dimensional vector or a row vector of shape
+        (1, n_assets). If None, the sample means are used. The default is None.
+    cov : array_like, optional
+        Covariance matrix of shape (n_assets, n_assets). If None, it is
+        estimated from ``returns``. The default is None.
     rm : str, optional
         Risk measure used in the denominator of the ratio. The default is
         'MV'. Possible values are:
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': Even Moment of order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': Even Semi Moment of order 2 * p_em.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'VaR': Value at Risk.
@@ -2222,23 +2453,27 @@ def Sharpe(
     alpha : float, optional
         Significance level of VaR, CVaR, EVaR, RLVaR, DaR, CDaR, EDaR, RLDaR and Tail Gini of losses.
         The default is 0.05.
-    a_sim : float, optional
+    a_sim : int, optional
         Number of CVaRs used to approximate Tail Gini of losses. The default is 100.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of CVaR and Tail Gini of gains. If None it duplicates alpha value.
         The default is None.
-    b_sim : float, optional
+    b_sim : int or None, optional
         Number of CVaRs used to approximate Tail Gini of gains. If None it duplicates a_sim value.
         The default is None.
     kappa : float, optional
         Deformation parameter of RLVaR and RLDaR for losses, must be between 0 and 1.
         The default is 0.3.
-    kappa_g : float, optional
+    kappa_g : float or None, optional
         Deformation parameter of RLVaR and RLDaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
-        The default value is None.
+        The default value is 'CLARABEL'.
 
     Raises
     ------
@@ -2297,6 +2532,8 @@ def Sharpe(
         b_sim=b_sim,
         kappa=kappa,
         kappa_g=kappa_g,
+        p_em=p_em,
+        p_esm=p_esm,
         solver=solver,
     )
 
@@ -2322,6 +2559,8 @@ def Risk_Contribution(
     b_sim=None,
     kappa=0.3,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
 ):
     r"""
@@ -2329,23 +2568,29 @@ def Risk_Contribution(
 
     Parameters
     ----------
-    w : DataFrame or Series of shape (n_assets, 1)
-        Portfolio weights, where n_assets is the number of assets.
-    returns : DataFrame or nd-array of shape (n_samples, n_features)
-        Features matrix, where n_samples is the number of samples and
-        n_features is the number of features.
-    cov : DataFrame of shape (n_assets, n_assets)
-        Covariance matrix, where n_assets is the number of assets.
+    w : array_like
+        Portfolio weights as a one-dimensional sequence or row/column vector.
+        NumPy arrays, pandas Series, and one-column or one-row DataFrames are
+        accepted.
+    returns : DataFrame, Series, or array_like of shape (n_samples, n_features)
+        Numeric returns for the assets. A pandas Series is treated as one
+        asset; a one-dimensional array-like input is treated as one observation
+        across assets.
+    cov : array_like, optional
+        Covariance matrix of shape (n_assets, n_assets). If None, it is
+        estimated from ``returns``. The default is None.
     rm : str, optional
         Risk measure used in the denominator of the ratio. The default is
         'MV'. Possible values are:
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': Even Moment of order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': Even Semi Moment of order 2 * p_esm.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'VaR': Value at Risk.
@@ -2379,23 +2624,27 @@ def Risk_Contribution(
     alpha : float, optional
         Significance level of VaR, CVaR, EVaR, RLVaR, DaR, CDaR, EDaR, RLDaR and Tail Gini of losses.
         The default is 0.05.
-    a_sim : float, optional
+    a_sim : int, optional
         Number of CVaRs used to approximate Tail Gini of losses. The default is 100.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of CVaR and Tail Gini of gains. If None it duplicates alpha value.
         The default is None.
-    b_sim : float, optional
+    b_sim : int or None, optional
         Number of CVaRs used to approximate Tail Gini of gains. If None it duplicates a_sim value.
         The default is None.
     kappa : float, optional
         Deformation parameter of RLVaR and RLDaR for losses, must be between 0 and 1.
         The default is 0.3.
-    kappa_g : float, optional
+    kappa_g : float or None, optional
         Deformation parameter of RLVaR and RLDaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
-        The default value is None.
+        The default value is 'CLARABEL'.
 
     Raises
     ------
@@ -2417,7 +2666,7 @@ def Risk_Contribution(
 
     if isinstance(returns, pd.Series):
         returns_ = returns.to_frame()
-        returns_ = returns.to_numpy()
+        returns_ = returns_.to_numpy()
     elif isinstance(returns, pd.DataFrame):
         returns_ = returns.to_numpy()
     else:
@@ -2429,7 +2678,16 @@ def Risk_Contribution(
         cov_ = np.array(cov, ndmin=2)
 
     RC = []
-    if rm in ["EVaR", "EDaR", "RLVaR", "RLDaR", "EVRG", "RVRG"]:
+    if rm in [
+        "EVaR",
+        "EDaR",
+        "RLVaR",
+        "RLDaR",
+        "EVRG",
+        "RVRG",
+        "EDaR_Rel",
+        "RLDaR_Rel",
+    ]:
         d_i = 0.0001
     else:
         d_i = 0.0000001
@@ -2549,6 +2807,14 @@ def Risk_Contribution(
         elif rm == "SKT":
             risk_1 = SemiKurtosis(a_1) * 0.5
             risk_2 = SemiKurtosis(a_2) * 0.5
+        elif rm == "EM":
+            risk_1 = EvenMoment(a_1, p=p_em) * 0.5
+            risk_2 = EvenMoment(a_2, p=p_em) * 0.5
+        elif rm == "ESM":
+            risk_1 = EvenSemiMoment(a_1, p=p_esm) * 0.5
+            risk_2 = EvenSemiMoment(a_2, p=p_esm) * 0.5
+        else:
+            raise ValueError("rm must be a valid risk measure, got " + str(rm))
 
         RC_i = (risk_1 - risk_2) / (2 * d_i) * w_[i, 0]
         RC.append(RC_i)
@@ -2570,6 +2836,8 @@ def Risk_Margin(
     b_sim=None,
     kappa=0.3,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
 ):
     r"""
@@ -2578,23 +2846,29 @@ def Risk_Margin(
 
     Parameters
     ----------
-    w : DataFrame or Series of shape (n_assets, 1)
-        Portfolio weights, where n_assets is the number of assets.
-    returns : DataFrame or nd-array of shape (n_samples, n_features)
-        Features matrix, where n_samples is the number of samples and
-        n_features is the number of features.
-    cov : DataFrame of shape (n_assets, n_assets)
-        Covariance matrix, where n_assets is the number of assets.
+    w : array_like
+        Portfolio weights as a one-dimensional sequence or row/column vector.
+        NumPy arrays, pandas Series, and one-column or one-row DataFrames are
+        accepted.
+    returns : DataFrame, Series, or array_like of shape (n_samples, n_features)
+        Numeric returns for the assets. A pandas Series is treated as one
+        asset; a one-dimensional array-like input is treated as one observation
+        across assets.
+    cov : array_like, optional
+        Covariance matrix of shape (n_assets, n_assets). If None, it is
+        estimated from ``returns``. The default is None.
     rm : str, optional
         Risk measure used in the denominator of the ratio. The default is
         'MV'. Possible values are:
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': Even Moment of order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': Even Semi Moment of order 2 * p_esm.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'VaR': Value at Risk.
@@ -2628,25 +2902,29 @@ def Risk_Margin(
     alpha : float, optional
         Significance level of VaR, CVaR, EVaR, RLVaR, DaR, CDaR, EDaR, RLDaR
         and Tail Gini of losses. The default is 0.05.
-    a_sim : float, optional
+    a_sim : int, optional
         Number of CVaRs used to approximate Tail Gini of losses. The default is 100.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of VaR, CVaR, Tail Gini, EVaR and RLVaR of gains. If
         None it duplicates alpha value. The default is None.
-    b_sim : float, optional
+    b_sim : int or None, optional
         Number of CVaRs used to approximate Tail Gini of gains. If None it
         duplicates a_sim value.
         The default is None.
     kappa : float, optional
         Deformation parameter of RLVaR and RLDaR for losses, must be between 0 and 1.
         The default is 0.3.
-    kappa_g : float, optional
+    kappa_g : float or None, optional
         Deformation parameter of RLVaR and RLDaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports exponential and power cone
         programming. Used to calculate EVaR, EVRG, EDaR, RLVaR, RVRG and RLDaR.
-        The default value is None.
+        The default value is 'CLARABEL'.
 
     Raises
     ------
@@ -2679,7 +2957,16 @@ def Risk_Margin(
         cov_ = np.array(cov, ndmin=2)
 
     RM = []
-    if rm in ["RLVaR", "RLDaR"]:
+    if rm in [
+        "EVaR",
+        "EDaR",
+        "RLVaR",
+        "RLDaR",
+        "EVRG",
+        "RVRG",
+        "EDaR_Rel",
+        "RLDaR_Rel",
+    ]:
         d_i = 0.0001
     else:
         d_i = 0.0000001
@@ -2799,6 +3086,14 @@ def Risk_Margin(
         elif rm == "SKT":
             risk_1 = SemiKurtosis(a_1) * 0.5
             risk_2 = SemiKurtosis(a_2) * 0.5
+        elif rm == "EM":
+            risk_1 = EvenMoment(a_1, p=p_em) * 0.5
+            risk_2 = EvenMoment(a_2, p=p_em) * 0.5
+        elif rm == "ESM":
+            risk_1 = EvenSemiMoment(a_1, p=p_esm) * 0.5
+            risk_2 = EvenSemiMoment(a_2, p=p_esm) * 0.5
+        else:
+            raise ValueError("rm must be a valid risk measure, got " + str(rm))
 
         RM_i = (risk_1 - risk_2) / (2 * d_i)
         RM.append(RM_i)
@@ -2823,6 +3118,8 @@ def Factors_Risk_Contribution(
     b_sim=None,
     kappa=0.3,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
     feature_selection="stepwise",
     stepwise="Forward",
@@ -2835,20 +3132,23 @@ def Factors_Risk_Contribution(
 
     Parameters
     ----------
-    w : DataFrame or Series of shape (n_assets, 1)
-        Portfolio weights, where n_assets is the number of assets.
-    returns : DataFrame or nd-array of shape (n_samples, n_features)
-        Features matrix, where n_samples is the number of samples and
-        n_features is the number of features.
-    factors : DataFrame or nd-array of shape (n_samples, n_factors)
-        Factors matrix, where n_samples is the number of samples and
-        n_factors is the number of factors.
-    cov : DataFrame of shape (n_assets, n_assets)
-        Covariance matrix, where n_assets is the number of assets.
-    B : DataFrame of shape (n_assets, n_factors), optional
+    w : array_like
+        Portfolio weights as a one-dimensional sequence or row/column vector.
+        NumPy arrays, pandas Series, and one-column or one-row DataFrames are
+        accepted.
+    returns : DataFrame of shape (n_samples, n_assets)
+        Numeric asset returns. This parameter must be a pandas DataFrame.
+    factors : DataFrame of shape (n_samples, n_factors)
+        Numeric factor returns. This parameter must be a pandas DataFrame with
+        the same index as ``returns``.
+    cov : array_like, optional
+        Covariance matrix of shape (n_assets, n_assets). If None, it is
+        estimated from ``returns``. The default is None.
+    B : DataFrame, optional
         Loadings matrix, where n_assets is the number assets and n_factors is
-        the number of risk factors. If is not specified, is estimated using
-        stepwise regression. The default is None.
+        the number of risk factors (with an optional constant column). If not
+        specified, it is estimated using the selected feature method. The
+        default is None.
     const : bool, optional
         Indicate if the loadings matrix has a constant.
         The default is False.
@@ -2858,10 +3158,12 @@ def Factors_Risk_Contribution(
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': Even Moment of order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': Even Semi Moment of order 2 * p_esm.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'VaR': Value at Risk.
@@ -2895,29 +3197,33 @@ def Factors_Risk_Contribution(
     alpha : float, optional
         Significance level of VaR, CVaR, EVaR, RLVaR, DaR, CDaR, EDaR, RLDaR and Tail Gini of losses.
         The default is 0.05.
-    a_sim : float, optional
+    a_sim : int, optional
         Number of CVaRs used to approximate Tail Gini of losses. The default is 100.
-    beta : float, optional
+    beta : float or None, optional
         Significance level of CVaR and Tail Gini of gains. If None it duplicates alpha value.
         The default is None.
-    b_sim : float, optional
+    b_sim : int or None, optional
         Number of CVaRs used to approximate Tail Gini of gains. If None it duplicates a_sim value.
         The default is None.
     kappa : float, optional
         Deformation parameter of RLVaR and RLDaR for losses, must be between 0 and 1.
         The default is 0.3.
-    kappa_g : float, optional
+    kappa_g : float or None, optional
         Deformation parameter of RLVaR and RLDaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
-        The default value is None.
-    feature_selection: str 'stepwise' or 'PCR', optional
+        The default value is 'CLARABEL'.
+    feature_selection : str, optional
         Indicate the method used to estimate the loadings matrix.
-        The default is 'stepwise'.
-    stepwise: str 'Forward' or 'Backward', optional
+        The default is 'stepwise'. Supported values are 'stepwise' and 'PCR'.
+    stepwise : str, optional
         Indicate the method used for stepwise regression.
-        The default is 'Forward'.
+        The default is 'Forward'. Supported values are 'Forward' and 'Backward'.
     criterion : str, optional
         The default is 'pvalue'. Possible values of the criterion used to select
         the best features are:
@@ -2927,13 +3233,13 @@ def Factors_Risk_Contribution(
         - 'SIC': select the features based on lowest Schwarz Information Criterion.
         - 'R2': select the features based on highest R Squared.
         - 'R2_A': select the features based on highest Adjusted R Squared.
-    threshold : scalar, optional
+    threshold : float, optional
         Is the maximum p-value for each variable that will be
         accepted in the model. The default is 0.05.
-    n_components : int, float, None or str, optional
-        if 1 < n_components (int), it represents the number of components that
-        will be keep. if 0 < n_components < 1 (float), it represents the
-        percentage of variance that the is explained by the components kept.
+    n_components : int or float, optional
+        If greater than or equal to 1, it specifies the number of components
+        to keep (integer values are expected). If between 0 and 1, it
+        specifies the fraction of variance to retain.
         See `PCA <https://scikit-learn.org/stable/modules/generated/sklearn.decomposition.PCA.html>`_
         for more details. The default is 0.95.
 
@@ -2968,6 +3274,9 @@ def Factors_Risk_Contribution(
         beta=beta,
         b_sim=b_sim,
         kappa=kappa,
+        kappa_g=kappa_g,
+        p_em=p_em,
+        p_esm=p_esm,
         solver=solver,
     ).reshape(-1, 1)
 
@@ -2983,9 +3292,9 @@ def Factors_Risk_Contribution(
         )
         const = True
     elif not isinstance(B, pd.DataFrame):
-        raise ValueError("B must be a DataFrame")
+        raise TypeError("B must be a DataFrame")
 
-    if const == True or factors.shape[1] + 1 == B.shape[1]:
+    if const is True or factors.shape[1] + 1 == B.shape[1]:
         B = B.iloc[:, 1:].to_numpy()
 
     if feature_selection == "PCR":
@@ -3031,28 +3340,29 @@ def BrinsonAttribution(
     prices : DataFrame of shape (n_samples, n_assets)
         Assets prices DataFrame, where n_samples is the number of
         observations and n_assets is the number of assets.
-    w : DataFrame  or Series of shape (n_assets, 1)
-        A portfolio specified by the user.
-    wb : DataFrame  or Series of shape (n_assets, 1)
-        A benchmark specified by the user.
-    start : str
-        Start date in format 'YYYY-MM-DD' specified by the user.
-    end : str
-        End date in format 'YYYY-MM-DD' specified by the user.
+    w : DataFrame or Series
+        Portfolio weights. A Series or a single-row or single-column DataFrame
+        with one weight per asset.
+    wb : DataFrame or Series
+        Benchmark weights. A Series or a single-row or single-column DataFrame
+        with one weight per asset.
+    start : str or datetime-like
+        Start date, usually in 'YYYY-MM-DD' format.
+    end : str or datetime-like
+        End date, usually in 'YYYY-MM-DD' format.
     asset_classes : DataFrame of shape (n_assets, n_cols)
         Asset's classes DataFrame, where n_assets is the number of assets and
         n_cols is the number of columns of the DataFrame where the first column
         is the asset list and the next columns are the different asset's
-        classes sets. It is only used when kind value is 'classes'. The default
-        value is None.
+        classes sets. This parameter must be a pandas DataFrame.
     classes_col : str or int
         If value is str, it is the column name of the set of classes from
         asset_classes dataframe. If value is int, it is the column number of
-        the set of classes from asset_classes dataframe. The default
-        value is None.
-    method : str
-        Method used to calculate the nearest start or end dates in case one of
-        them is not in prices DataFrame. The default value is 'nearest'.
+        the set of classes from asset_classes DataFrame.
+    method : str or None, optional
+        Matching method used to locate the start and end dates when an exact
+        match is unavailable. The default is 'nearest'; None requires an exact
+        match.
         See `get_indexer <https://pandas.pydata.org/docs/reference/api/pandas.Index.get_indexer.html#pandas.Index.get_indexer>`__ for more details.
 
     Raises
@@ -3083,7 +3393,7 @@ def BrinsonAttribution(
             classes_col='Industry',
             )
 
-    .. image:: images/BrinAttr.png
+    .. image:: ../images/BrinAttr.png
 
 
     """
@@ -3095,30 +3405,30 @@ def BrinsonAttribution(
         if isinstance(w, pd.Series):
             wp_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             wp_ = w.T.copy()
         elif w.shape[1] == 1:
             wp_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if not isinstance(wb, pd.DataFrame):
         if isinstance(wb, pd.Series):
             wb_ = wb.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if wb.shape[0] == 1:
             wb_ = wb.T.copy()
         elif wb.shape[1] == 1:
             wb_ = wb.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if not isinstance(asset_classes, pd.DataFrame):
-        raise ValueError("asset_classes must be a DataFrame")
+        raise TypeError("asset_classes must be a DataFrame")
     else:
         if asset_classes.shape[1] < 2:
             raise ValueError("asset_classes must have at least two columns")

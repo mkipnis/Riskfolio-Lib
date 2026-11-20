@@ -1,13 +1,13 @@
 # Riskfolio-Lib
 
-**Quantitative Strategic Asset Allocation, Easy for Everyone.**
+**Portfolio Optimization in Python, Easy for Everyone.**
 
 <a href="https://www.kqzyfj.com/click-101360347-15150084?url=https%3A%2F%2Flink.springer.com%2Fbook%2F9783031843037" target="_blank">
 <div>
 <img src="https://raw.githubusercontent.com/dcajasn/Riskfolio-Lib/refs/heads/master/docs/source/_static/Button.png" height="40" />
 </div>
 </a>
-<a href="https://www.paypal.com/ncp/payment/GN55W4UQ7VAMN" target="_blank">
+<a href="https://portfoliooptimization.org/course/course.html" target="_blank">
 <div>
 <img src="https://raw.githubusercontent.com/dcajasn/Riskfolio-Lib/refs/heads/master/docs/source/_static/Button2.png" height="40" />
 </div>
@@ -18,24 +18,28 @@
 <img src="https://raw.githubusercontent.com/dcajasn/Riskfolio-Lib/master/docs/source/images/MSV_Frontier.png" height="200">
 <img src="https://raw.githubusercontent.com/dcajasn/Riskfolio-Lib/master/docs/source/images/Pie_Chart.png" height="200">
 </div>
-
-[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/dcajasn)
-
+<br>
+<a href="https://github.com/sponsors/dcajasn"> <img src="https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86" height="30" /></a>
+<br>
 <a href='https://ko-fi.com/B0B833SXD' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi1.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
-[![GitHub stars](https://img.shields.io/github/stars/dcajasn/Riskfolio-Lib)](https://github.com/dcajasn/Riskfolio-Lib/stargazers)
-[![Downloads](https://static.pepy.tech/personalized-badge/riskfolio-lib?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BRIGHTGREEN&left_text=downloads)](https://pepy.tech/projects/riskfolio-lib)
-[![Downloads per Month](https://static.pepy.tech/personalized-badge/riskfolio-lib?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=ORANGE&left_text=downloads%2Fmonth)](https://pepy.tech/projects/riskfolio-lib)
-[![Documentation Status](https://readthedocs.org/projects/riskfolio-lib/badge/?version=latest)](https://riskfolio-lib.readthedocs.io/en/latest/?badge=latest)
-[![GitHub License](https://img.shields.io/github/license/dcajasn/Riskfolio-Lib)](https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt)
-[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/dcajasn/Riskfolio-Lib/HEAD)
-
-[![Star History Chart](https://api.star-history.com/svg?repos=dcajasn/Riskfolio-Lib&type=timeline&legend=top-left)](https://www.star-history.com/#dcajasn/Riskfolio-Lib&type=timeline&legend=top-left)
+<a href="https://github.com/dcajasn/Riskfolio-Lib/stargazers"> <img src="https://img.shields.io/github/stars/dcajasn/Riskfolio-Lib" height="28" /></a>
+<a href="https://pepy.tech/projects/riskfolio-lib"> <img src="https://static.pepy.tech/personalized-badge/riskfolio-lib?period=total&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=BRIGHTGREEN&left_text=downloads" height="28" /></a>
+<a href="https://pepy.tech/projects/riskfolio-lib"> <img src="https://static.pepy.tech/personalized-badge/riskfolio-lib?period=monthly&units=INTERNATIONAL_SYSTEM&left_color=GREY&right_color=ORANGE&left_text=downloads%2Fmonth" height="28" /></a>
+<a href="https://riskfolio-lib.readthedocs.io/en/latest/?badge=latest"> <img src="https://readthedocs.org/projects/riskfolio-lib/badge/?version=latest" height="28" /></a>
+<a href="https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt"> <img src="https://img.shields.io/github/license/dcajasn/Riskfolio-Lib" height="28" /></a>
+<a href="https://mybinder.org/v2/gh/dcajasn/Riskfolio-Lib/HEAD"> <img src="https://mybinder.org/badge_logo.svg" height="28" /></a>
+<a href="https://www.star-history.com/?repos=dcajasn%2Friskfolio-lib&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=dcajasn/riskfolio-lib&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=dcajasn/riskfolio-lib&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=dcajasn/riskfolio-lib&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## Description
 
-Riskfolio-Lib is a library for making quantitative strategic asset allocation
-or portfolio optimization in Python made in Peru &#x1F1F5;&#x1F1EA;. Its objective is to help students, academics and practitioners to build investment portfolios based on mathematically complex models with low effort. It is built on top of
+Riskfolio-Lib is a library for making __Portfolio Optimization in Python__ made in Peru &#x1F1F5;&#x1F1EA;. Its objective is to help students, academics and practitioners to build investment portfolios based on mathematically complex models with low effort. It is built on top of
 [CVXPY](https://www.cvxpy.org/) and closely integrated
 with [Pandas](https://pandas.pydata.org/) data structures.
 
@@ -48,12 +52,13 @@ Some of key functionalities that Riskfolio-Lib offers:
     - Maximum Utility Function.
     - Maximum Risk Adjusted Return Ratio.
 
-- Mean Risk and Logarithmic Mean Risk (Kelly Criterion) Portfolio Optimization with 24 convex risk measures:
+- Mean Risk and Logarithmic Mean Risk (Kelly Criterion) Portfolio Optimization with 26 convex risk measures:
 
     **Dispersion Risk Measures:**
 
     - Standard Deviation.
     - Square Root Kurtosis.
+    - p-th Root Even Moment of order 2p.
     - Mean Absolute Deviation (MAD).
     - Gini Mean Difference (GMD).
     - Conditional Value at Risk Range.
@@ -67,6 +72,7 @@ Some of key functionalities that Riskfolio-Lib offers:
 
     - Semi Standard Deviation.
     - Square Root Semi Kurtosis.
+    - p-th Root Even Semi Moment of order 2p.
     - First Lower Partial Moment (Omega Ratio).
     - Second Lower Partial Moment (Sortino Ratio).
     - Conditional Value at Risk (CVaR).
@@ -85,12 +91,13 @@ Some of key functionalities that Riskfolio-Lib offers:
     - Relativistic Drawdown at Risk (RLDaR) for uncompounded cumulative returns.
     - Maximum Drawdown (Calmar Ratio) for uncompounded cumulative returns.
 
-- Risk Parity Portfolio Optimization with 20 convex risk measures:
+- Risk Parity Portfolio Optimization with 22 convex risk measures:
 
     **Dispersion Risk Measures:**
 
     - Standard Deviation.
     - Square Root Kurtosis.
+    - p-th Root Even Moment of order 2p.
     - Mean Absolute Deviation (MAD).
     - Gini Mean Difference (GMD).
     - Conditional Value at Risk Range.
@@ -103,6 +110,7 @@ Some of key functionalities that Riskfolio-Lib offers:
 
     - Semi Standard Deviation.
     - Square Root Semi Kurtosis.
+    - p-th Root Even Semi Moment of order 2p.
     - First Lower Partial Moment (Omega Ratio)
     - Second Lower Partial Moment (Sortino Ratio)
     - Conditional Value at Risk (CVaR).
@@ -118,13 +126,14 @@ Some of key functionalities that Riskfolio-Lib offers:
     - Entropic Drawdown at Risk (EDaR) for uncompounded cumulative returns.
     - Relativistic Drawdown at Risk (RLDaR) for uncompounded cumulative returns.
 
-- Hierarchical Clustering Portfolio Optimization: Hierarchical Risk Parity (HRP) and Hierarchical Equal Risk Contribution (HERC) with 35 risk measures using naive risk parity:
+- Hierarchical Clustering Portfolio Optimization: Hierarchical Risk Parity (HRP) and Hierarchical Equal Risk Contribution (HERC) with 37 risk measures using naive risk parity:
 
     **Dispersion Risk Measures:**
 
     - Standard Deviation.
     - Variance.
     - Square Root Kurtosis.
+    - 2p-th Root of Even Moment of Order 2p.
     - Mean Absolute Deviation (MAD).
     - Gini Mean Difference (GMD).
     - Value at Risk Range.
@@ -139,6 +148,7 @@ Some of key functionalities that Riskfolio-Lib offers:
 
     - Semi Standard Deviation.
     - Fourth Root Semi Kurtosis.
+    - 2p-th Root Even Semi Moment of order 2p.
     - First Lower Partial Moment (Omega Ratio).
     - Second Lower Partial Moment (Sortino Ratio).
     - Value at Risk (VaR).
@@ -169,10 +179,12 @@ Some of key functionalities that Riskfolio-Lib offers:
 - Worst Case Mean Variance Portfolio Optimization.
 - Relaxed Risk Parity Portfolio Optimization.
 - Ordered Weighted Averaging (OWA) Portfolio Optimization.
+- Mean-Variance-Skewness-Kurtosis (MVSK) Portfolio Optimization (Semidefinite Relaxation).
 - Portfolio optimization with Black Litterman model.
 - Portfolio optimization with Risk Factors model.
 - Portfolio optimization with Black Litterman Bayesian model.
 - Portfolio optimization with Augmented Black Litterman model.
+- Portfolio optimization with Entropy Pooling model.
 - Portfolio optimization with constraints on tracking error and turnover.
 - Portfolio optimization with short positions and leveraged portfolios.
 - Portfolio optimization with constraints on maximum number of assets and number of effective assets.
@@ -195,7 +207,7 @@ Some of key functionalities that Riskfolio-Lib offers:
 - Tools to estimate loadings matrix (Stepwise Regression and Principal Components Regression).
 - Tools to visualizing portfolio properties and risk measures.
 - Tools to build reports on Jupyter Notebook and Excel. 
-- Option to use commercial optimization solver like MOSEK or GUROBI for large scale problems.
+- Option to use commercial optimization solver such as MOSEK or GUROBI for large scale problems.
 
 
 ## Documentation
@@ -217,7 +229,9 @@ Due to Riskfolio-Lib is based on CVXPY, Riskfolio-Lib can use the same solvers a
 | Gini Mean Difference (GMD)            |    |    |      |     |     | X** |
 | Semi Variance (MSV)                   |    |    | X    |     |     |     |
 | Kurtosis (KT)                         |    |    |      | X   |     |     |
+| Even Moment (EM)                      |    |    |      |     |     | X** |
 | Semi Kurtosis (SKT)                   |    |    |      | X   |     |     |
+| Even Semi Moment (ESM)                |    |    |      |     |     | X** |
 | First Lower Partial Moment (FLPM)     | X  |    |      |     |     |     |
 | Second Lower Partial Moment (SLPM)    |    |    | X    |     |     |     |
 | Conditional Value at Risk (CVaR)      | X  |    |      |     |     |     |
@@ -256,9 +270,10 @@ POW - refers to problems with 3-dimensional power cone constraints.
 
 ## Dependencies
 
-Riskfolio-Lib supports Python 3.9 or higher.
+Riskfolio-Lib supports Python 3.10 or higher.
 
 Installation requires:
+
 - [numpy](http://www.numpy.org/) >= 1.26.0
 - [scipy](https://www.scipy.org/) >= 1.13.0
 - [pandas](https://pandas.pydata.org/) >= 2.2.2
@@ -273,8 +288,13 @@ Installation requires:
 - [networkx](https://networkx.org) >= 3.4.2
 - [astropy](https://www.astropy.org) >= 6.1.3
 - [pybind11](https://pybind11.readthedocs.io/en/stable/) >= 2.13.6
-- [vectorbt](https://vectorbt.dev) >= 0.28.0
 
+Examples requires:
+
+- [yfinance](https://ranaroussi.github.io/yfinance/)
+- [mosek](https://docs.mosek.com/9.2/install/installation.html)
+- [vectorbt](https://vectorbt.dev)
+  
 
 ## Installation
 
@@ -283,51 +303,53 @@ The latest stable release (and older versions) can be installed from PyPI:
     pip install riskfolio-lib
 
 
+## Contributing
+
+Contributions of all kinds are welcome and greatly appreciated. Riskfolio-Lib is an 
+independent open-source project, and community support plays a vital role in its 
+continued development, maintenance, and growth.
+
+### Financial Support
+
+If you would like to support the long-term sustainability of Riskfolio-Lib, you can 
+contribute financially in any of the following ways:
+
+- Purchase my book [Advanced Portfolio Optimization: a Cutting-Edge Quantitative Approach](https://www.kqzyfj.com/click-101359873-15150084?url=https%3A%2F%2Flink.springer.com%2Fbook%2F9783031843037).
+- Enroll in my course [Portfolio Optimization with Python](https://www.paypal.com/ncp/payment/GN55W4UQ7VAMN).
+- Become a sponsor through [GitHub Sponsors](https://github.com/sponsors/dcajasn).
+- Make a donation via [Ko-fi](https://ko-fi.com/B0B833SXD).
+- Hire me for consulting services through my [LinkedIn](https://www.linkedin.com/in/dany-cajas/) or contact me by [Email](mailto:dcajasn@gmail.com).
+
+### Other Ways to Contribute
+
+You can also contribute directly to the project by:
+
+- Improve and expand the documentation.
+- Enhance the performance and efficiency of existing code.
+- Implement new optimization objectives, risk measures, robust estimation techniques, and 
+  other portfolio optimization features.
+- Develop additional examples and tutorials using Jupyter notebooks.
+- Help expand the test suite by writing and improving tests with pytest.
+- Suggest journal articles, research papers, blog posts, or other resources related to 
+  portfolio optimization, quantitative finance, machine learning or econometrics that 
+  could inspire new features or improvements in Riskfolio-Lib.
+
+Whether you contribute code, documentation, examples, tests, ideas, feedback, financial 
+support, or simply help spread the word about Riskfolio-Lib, your support helps make the 
+project a better tool for the quantitative finance community.
+
 ## Citing
 
 If you use Riskfolio-Lib for published work, please use the following BibTeX entry:
 
-```
+```bibtex
 @misc{riskfolio,
       author = {Dany Cajas},
-      title = {Riskfolio-Lib (7.2.1)},
+      title = {Riskfolio-Lib (7.4)},
       year  = {2026},
       url   = {https://github.com/dcajasn/Riskfolio-Lib},
       }
 ```
- 
-## Development
-
-Riskfolio-Lib development takes place on Github: https://github.com/dcajasn/Riskfolio-Lib
-
-
-## Consulting Fees
-
-Riskfolio-Lib is an open-source project, but since it's a project that is not financed for any institution, I started charging for consultancies that are not related to errors in source code. Our fees are as follows:
-
-- $ 25 USD (United States Dollars) per question that doesn't require to check code.
-- $ 50 USD to check a small size script or code (less than 200 lines of code). The fee of the solution depends on the complexity of the solution:
-    - $ 50 USD for simple errors in scripts (modify less than 10 lines of code).
-    - For most complex errors the fee depends on the complexity of the solution but the fee is $ 150 USD per hour.
-- $ 100 USD to check a medium size script or code (between 201 and 600 lines of code). The fee of the solution depends on the complexity of the solution:
-    - $ 50 USD for simple errors in scripts (modify less than 10 lines of code).
-    - For most complex errors the fee depends on the complexity of the solution but the fee is $ 150 USD per hour.
-- For large size script or code (more than 600 lines of code) the fee is variable depending on the size of the code. The fee of the solution depends on the complexity of the solution:
-    - $ 50 USD for simple errors in scripts (modify less than 10 lines of code).
-    - For most complex errors the fee depends on the complexity of the solution but the fee is $ 150 USD per hour.
-
-**All consulting must be paid in advance**.
-
-You can contact me through:
-
-- __[LinkedIn](https://www.linkedin.com/in/dany-cajas/)__
-- __[Gmail](dcajasn@gmail.com)__
-
-You can pay using one of the following channels:
-
-- __[Github Sponsorship](https://github.com/sponsors/dcajasn)__
-
-- <a href='https://ko-fi.com/B0B833SXD' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi1.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
 ## RoadMap
 

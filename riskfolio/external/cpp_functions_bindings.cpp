@@ -17,9 +17,12 @@ PYBIND11_MODULE(functions, m) {
     bind_duplication_elimination_matrix(m);
     bind_duplication_summation_matrix(m);
     bind_commutation_matrix(m);
+    bind_covariance_matrix(m);
+    bind_covariance_matrix_prob(m);
     bind_coskewness_matrix(m);
+    bind_coskewness_matrix_prob(m);
     bind_cokurtosis_matrix(m);
-    bind_k_eigh(m);
+    bind_cokurtosis_matrix_prob(m);
     bind_dcorr(m);
     bind_dcorr_matrix(m);
     bind_residuals_coskewness_fm(m);
