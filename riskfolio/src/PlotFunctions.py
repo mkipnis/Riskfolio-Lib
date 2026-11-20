@@ -1,11 +1,8 @@
-""""""  #
+# Copyright (c) 2020-2026, Dany Cajas
+# All rights reserved.
+# This work is licensed under BSD 3-Clause "New" or "Revised" License.
+# License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
 
-"""
-Copyright (c) 2020-2026, Dany Cajas
-All rights reserved.
-This work is licensed under BSD 3-Clause "New" or "Revised" License.
-License available at https://github.com/dcajasn/Riskfolio-Lib/blob/master/LICENSE.txt
-"""
 
 import numpy as np
 import pandas as pd
@@ -13,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.lines as mlines
 import matplotlib.ticker as mticker
-from matplotlib import cm, colors
+from matplotlib import colors
 from matplotlib.gridspec import GridSpec, GridSpecFromSubplotSpec
 import scipy.stats as st
 import scipy.cluster.hierarchy as hr
@@ -48,10 +45,12 @@ __all__ = [
 rm_names = [
     "Standard Deviation",
     "Square Root Kurtosis",
+    "Root of Even Moment",
     "Mean Absolute Deviation",
     "Gini Mean Difference",
     "Semi Standard Deviation",
     "Square Root Semi Kurtosis",
+    "Root of Even Semi Moment",
     "First Lower Partial Moment",
     "Second Lower Partial Moment",
     "Value at Risk",
@@ -77,10 +76,12 @@ rm_names = [
 rmeasures = [
     "MV",
     "KT",
+    "EM",
     "MAD",
     "GMD",
     "MSV",
     "SKT",
+    "ESM",
     "FLPM",
     "SLPM",
     "VaR",
@@ -150,18 +151,18 @@ def plot_series(returns, w, cmap="tab20", n_colors=20, height=6, width=10, ax=No
                             width=10,
                             ax=None)
 
-    .. image:: images/Port_Series.png
+    .. image:: ../images/Port_Series.png
 
     """
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a DataFrame or Series.")
+            raise TypeError("w must be a DataFrame or Series")
     else:
         w_ = w.copy()
 
@@ -169,7 +170,7 @@ def plot_series(returns, w, cmap="tab20", n_colors=20, height=6, width=10, ax=No
         if returns.columns.tolist() == w_.index.tolist():
             w_ = w_.T
         else:
-            raise ValueError("returns and w must have the same assets.")
+            raise ValueError("returns and w must have the same assets")
 
     if ax is None:
         fig = plt.gcf()
@@ -186,7 +187,7 @@ def plot_series(returns, w, cmap="tab20", n_colors=20, height=6, width=10, ax=No
     labels = w_.columns.tolist()
     index = returns.index.tolist()
 
-    colormap = cm.get_cmap(cmap)
+    colormap = plt.get_cmap(cmap)
     colormap = colormap(np.linspace(0, 1, int(n_colors)))
 
     if cmap == "gist_rainbow":
@@ -202,7 +203,7 @@ def plot_series(returns, w, cmap="tab20", n_colors=20, height=6, width=10, ax=No
         prices = np.ravel(prices).tolist()
         del prices[0]
 
-        ax.plot_date(index, prices, "-", label=labels[i])
+        ax.plot(index, prices, "-", label=labels[i])
 
     ax.xaxis.set_major_locator(mdates.AutoDateLocator(tz=None, minticks=5, maxticks=10))
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
@@ -214,8 +215,8 @@ def plot_series(returns, w, cmap="tab20", n_colors=20, height=6, width=10, ax=No
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -234,6 +235,8 @@ def plot_frontier(
     b_sim=None,
     kappa=0.30,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
     cmap="viridis",
     w=None,
@@ -267,9 +270,12 @@ def plot_frontier(
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': p_em Root of Even Moment or order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
+        - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': p_esm Root of Even Semi Moment or order 2 * p_esm.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'CVaR': Conditional Value at Risk.
@@ -284,7 +290,6 @@ def plot_frontier(
         - 'RG': Range of returns.
         - 'MDD': Maximum Drawdown of uncompounded returns (Calmar Ratio).
         - 'ADD': Average Drawdown of uncompounded cumulative returns.
-        - 'DaR': Drawdown at Risk of uncompounded cumulative returns.
         - 'CDaR': Conditional Drawdown at Risk of uncompounded cumulative returns.
         - 'EDaR': Entropic Drawdown at Risk of uncompounded cumulative returns.
         - 'RLDaR': Relativistic Drawdown at Risk of uncompounded cumulative returns.
@@ -312,6 +317,10 @@ def plot_frontier(
     kappa_g : float, optional
         Deformation parameter of RLVaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
         The default value is 'CLARABEL'.
@@ -327,7 +336,7 @@ def plot_frontier(
         Marker of w. The default is "*".
     s : float, optional
         Size of marker. The default is 16.
-    c : str, optional
+    c : str or list, optional
         Color of marker. The default is 'r'.
     height : float, optional
         Height of the image in inches. The default is 6.
@@ -384,20 +393,20 @@ def plot_frontier(
                               t_factor=252,
                               ax=None)
 
-    .. image:: images/MSV_Frontier.png
+    .. image:: ../images/MSV_Frontier.png
 
 
     """
 
     if not isinstance(w_frontier, pd.DataFrame):
-        raise ValueError("w_frontier must be a DataFrame.")
+        raise TypeError("w_frontier must be a DataFrame")
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame.")
+        raise TypeError("returns must be a DataFrame")
     else:
         if returns.columns.tolist() != w_frontier.index.tolist():
             if returns.columns.tolist() != w_frontier.columns.tolist():
-                raise ValueError("returns and w_frontier must have same assets.")
+                raise ValueError("returns and w_frontier must have same assets")
             else:
                 w_frontier_ = w_frontier.T.copy()
         else:
@@ -409,37 +418,37 @@ def plot_frontier(
         if mu.shape[0] == 1 or mu.shape[1] == 1:
             mu_ = mu.squeeze()
         else:
-            raise ValueError("mu must be a DataFrame or Series of one dimension.")
+            raise TypeError("mu must be a column DataFrame or Series")
     elif isinstance(mu, pd.Series):
         mu_ = mu.copy()
     else:
-        raise ValueError("mu must be a DataFrame or Series.")
+        raise TypeError("mu must be a DataFrame or Series")
 
     if cov is None:
         cov = returns.cov()
     elif isinstance(cov, pd.DataFrame):
         if cov.index.tolist() != cov.columns.tolist():
-            raise ValueError(
-                "cov must be a square DataFrame with samen labels in indexes and columns."
+            raise TypeError(
+                "cov must be a square DataFrame with samen labels in indexes and columns"
             )
         elif cov.index.tolist() != w_frontier_.index.tolist():
-            raise ValueError("cov and w_frontier must have the same assets.")
+            raise ValueError("cov and w_frontier must have the same assets")
     else:
-        raise ValueError("cov must be a square DataFrame.")
+        raise TypeError("cov must be a square DataFrame")
 
     if w is not None:
         if not isinstance(w, pd.DataFrame):
             if isinstance(w, pd.Series):
                 w_ = w.to_frame()
             else:
-                raise ValueError("w must be a DataFrame or Series")
+                raise TypeError("w must be a DataFrame or Series")
         else:
             if returns.columns.tolist() == w.columns.tolist():
                 w_ = w.T.copy()
             elif returns.columns.tolist() == w.index.tolist():
                 w_ = w.copy()
             else:
-                raise ValueError("returns and w must have the same assets.")
+                raise ValueError("returns and w must have the same assets")
 
     if beta is None:
         beta = alpha
@@ -476,14 +485,14 @@ def plot_frontier(
             axes.append(fig.add_subplot(gs[0]))
             axes.append(fig.add_subplot(gs[1]))
         else:
-            raise TypeError("ax must be a matplotlib axes object.")
+            raise TypeError("ax must be a matplotlib axes object")
 
     mu_ = np.array(mu_, ndmin=2)
 
     ax0 = axes[0]
-    if kelly == False:
+    if kelly is False:
         ax0.set_ylabel("Expected Arithmetic Return")
-    elif kelly == True:
+    elif kelly is True:
         ax0.set_ylabel("Expected Logarithmic Return")
 
     item = rmeasures.index(rm)
@@ -511,6 +520,12 @@ def plot_frontier(
         x_label += ", $\\kappa = $" + "{0:.2}".format(kappa)
     if rm in ["RLVaR", "RLDaR", "RVRG"]:
         x_label += ", $\\kappa_g = $" + "{0:.2}".format(kappa_g)
+    if rm in ["EM"]:
+        x_label += " of Order {}".format(int(2 * p_em))
+        x_label = "{}-th ".format(int(p_em)) + x_label
+    if rm in ["ESM"]:
+        x_label += " of Order {}".format(int(2 * p_esm))
+        x_label = "{}-th ".format(int(p_esm)) + x_label
 
     ax0.set_xlabel("Expected Risk - " + x_label)
 
@@ -522,8 +537,8 @@ def plot_frontier(
     Z1 = []
 
     for i in range(w_frontier_.shape[1]):
+        weights = np.array(w_frontier_.iloc[:, i], ndmin=2).T
         try:
-            weights = np.array(w_frontier_.iloc[:, i], ndmin=2).T
             risk = rk.Sharpe_Risk(
                 returns=returns,
                 w=weights,
@@ -535,25 +550,29 @@ def plot_frontier(
                 beta=beta,
                 b_sim=b_sim,
                 kappa=kappa,
+                kappa_g=kappa_g,
+                p_em=p_em,
+                p_esm=p_esm,
                 solver=solver,
             )
+        except Exception as e:
+            print(f"Skipping iteration '{i}' due to error: {e}")
+            continue
 
-            if kelly == False:
-                ret = mu_ @ weights
-            elif kelly == True:
-                ret = 1 / returns.shape[0] * np.sum(np.log(1 + returns @ weights))
-            ret = ret.item() * t_factor
+        if kelly is False:
+            ret = mu_ @ weights
+        elif kelly is True:
+            ret = 1 / returns.shape[0] * np.sum(np.log(1 + returns @ weights))
+        ret = ret.item() * t_factor
 
-            if rm not in ["MDD", "ADD", "CDaR", "EDaR", "RLDaR", "UCI"]:
-                risk = risk * t_factor**0.5
+        if rm not in ["MDD", "ADD", "CDaR", "EDaR", "RLDaR", "UCI"]:
+            risk = risk * t_factor**0.5
 
-            ratio = (ret - rf) / risk
+        ratio = (ret - rf) / risk
 
-            X1.append(risk)
-            Y1.append(ret)
-            Z1.append(ratio)
-        except:
-            pass
+        X1.append(risk)
+        Y1.append(ret)
+        Z1.append(ratio)
 
     ax_scatter = ax0.scatter(X1, Y1, c=Z1, cmap=cmap)
 
@@ -582,7 +601,7 @@ def plot_frontier(
             colormap = np.array(colormap)
 
         if len(label) != colormap.shape[0]:
-            colormap = cm.get_cmap("tab20")
+            colormap = plt.get_cmap("tab20")
             colormap = colormap(np.linspace(0, 1, 20))
             colormap = np.vstack(
                 [colormap[6:8], colormap[2:6], colormap[8:], colormap[0:2]]
@@ -605,11 +624,14 @@ def plot_frontier(
                 beta=beta,
                 b_sim=b_sim,
                 kappa=kappa,
+                kappa_g=kappa_g,
+                p_em=p_em,
+                p_esm=p_esm,
                 solver=solver,
             )
-            if kelly == False:
+            if kelly is False:
                 ret = mu_ @ weights
-            elif kelly == True:
+            elif kelly is True:
                 ret = 1 / returns.shape[0] * np.sum(np.log(1 + returns @ weights))
             ret = ret.item() * t_factor
 
@@ -649,8 +671,8 @@ def plot_frontier(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -714,7 +736,7 @@ def plot_pie(
                          cmap="tab20",
                          ax=None)
 
-    .. image:: images/Pie_Chart.png
+    .. image:: ../images/Pie_Chart.png
 
 
     """
@@ -723,14 +745,14 @@ def plot_pie(
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if ax is None:
         ax = plt.gca()
@@ -773,7 +795,7 @@ def plot_pie(
 
     ax.set_title(title)
 
-    colormap = cm.get_cmap(cmap)
+    colormap = plt.get_cmap(cmap)
     colormap = colormap(np.linspace(0, 1, n_colors))
 
     if cmap == "gist_rainbow":
@@ -827,13 +849,13 @@ def plot_pie(
             xy=(x, y),
             xytext=(1.1 * np.sign(x), 1.1 * y),
             horizontalalignment=horizontalalignment,
-            **kw
+            **kw,
         )
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -903,7 +925,7 @@ def plot_bar(
                          width=10,
                          ax=None)
 
-    .. image:: images/Bar_Chart.png
+    .. image:: ../images/Bar_Chart.png
 
 
     """
@@ -912,14 +934,14 @@ def plot_bar(
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if ax is None:
         fig = plt.gcf()
@@ -1080,8 +1102,8 @@ def plot_bar(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -1132,19 +1154,19 @@ def plot_frontier_area(
                                    width=10,
                                    ax=None)
 
-    .. image:: images/Area_Frontier.png
+    .. image:: ../images/Area_Frontier.png
 
 
     """
 
     if not isinstance(w_frontier, pd.DataFrame):
-        raise ValueError("w_frontier must be a DataFrame.")
+        raise TypeError("w_frontier must be a DataFrame")
 
     index = w_frontier.index.tolist()
     columns = w_frontier.columns.tolist()
     if not all(isinstance(x, str) for x in index):
         if not all(isinstance(x, str) for x in columns):
-            raise ValueError("w_frontier index must be the names of assets.")
+            raise ValueError("w_frontier index must be the names of assets")
         else:
             w_frontier_ = w_frontier.T.copy()
     else:
@@ -1156,7 +1178,7 @@ def plot_frontier_area(
         or all(isinstance(x, float) for x in columns)
     ):
         raise ValueError(
-            "w_frontier columns must be the number of the point in the efficient frontier."
+            "w_frontier columns must be the number of the point in the efficient frontier"
         )
 
     columns = list(range(len(columns)))
@@ -1171,7 +1193,7 @@ def plot_frontier_area(
 
     ax.set_title("Efficient Frontier's Assets Structure")
 
-    colormap = cm.get_cmap(cmap)
+    colormap = plt.get_cmap(cmap)
     colormap = colormap(np.linspace(0, 1, int(n_colors)))
 
     if cmap == "gist_rainbow":
@@ -1196,8 +1218,8 @@ def plot_frontier_area(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -1216,6 +1238,8 @@ def plot_risk_con(
     b_sim=None,
     kappa=0.30,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
     percentage=False,
     erc_line=True,
@@ -1255,10 +1279,12 @@ def plot_risk_con(
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': p_em Root of Even Moment of Order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': p_esm Root of Even Semi Moment of Order 2 * p_esm.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'CVaR': Conditional Value at Risk.
@@ -1295,6 +1321,10 @@ def plot_risk_con(
     kappa_g : float, optional
         Deformation parameter of RLVaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
         The default value is 'CLARABEL'.
@@ -1353,45 +1383,45 @@ def plot_risk_con(
                               t_factor=252,
                               ax=None)
 
-    .. image:: images/Risk_Con.png
+    .. image:: ../images/Risk_Con.png
 
 
     """
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame.")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if cov is None:
         cov = returns.cov()
     elif isinstance(cov, pd.DataFrame):
         if cov.index.tolist() != cov.columns.tolist():
             raise ValueError(
-                "cov must be a square DataFrame with samen labels in indexes and columns."
+                "cov must be a square DataFrame with samen labels in indexes and columns"
             )
         elif cov.index.tolist() != w_.index.tolist():
-            raise ValueError("cov and w must have the same assets.")
+            raise ValueError("cov and w must have the same assets")
     else:
-        raise ValueError("cov must be a square DataFrame.")
+        raise ValueError("cov must be a square DataFrame")
 
     if asset_classes is not None and classes_col is not None:
         if not isinstance(asset_classes, pd.DataFrame):
-            raise ValueError("asset_classes must be a DataFrame")
+            raise TypeError("asset_classes must be a DataFrame")
         else:
             if asset_classes.shape[1] < 2:
                 raise ValueError("asset_classes must have at least two columns")
@@ -1399,11 +1429,11 @@ def plot_risk_con(
             classes = asset_classes.columns.tolist()
 
             if isinstance(classes_col, str) and classes_col in classes:
-                A = asset_classes.loc[:, classes_col].to_frame()
-                col = A.columns.to_list()[0]
+                A = asset_classes.loc[:, [classes[0], classes_col]]
+                col = A.columns.to_list()[1]
             elif isinstance(classes_col, int) and classes[classes_col] in classes:
-                A = asset_classes.iloc[:, classes_col].to_frame()
-                col = A.columns.to_list()[0]
+                A = asset_classes.iloc[:, [0, classes_col]]
+                col = A.columns.to_list()[1]
             else:
                 raise ValueError(
                     "classes_col must be a valid column or column position of asset_classes"
@@ -1447,6 +1477,12 @@ def plot_risk_con(
         title += ", $\\kappa = $" + "{0:.2}".format(kappa)
     if rm in ["RLVaR", "RLDaR", "RVRG"]:
         title += ", $\\kappa = $" + "{0:.2}".format(kappa_g)
+    if rm in ["EM"]:
+        title += " of Order {}".format(int(2 * p_em))
+        title = title[:6] + "{}-th ".format(int(p_em)) + title[6:]
+    if rm in ["ESM"]:
+        title += " of Order {}".format(int(2 * p_esm))
+        title = title[:6] + "{}-th ".format(int(p_esm)) + title[6:]
 
     title += ") Contribution per Asset"
     if percentage:
@@ -1466,6 +1502,9 @@ def plot_risk_con(
         beta=beta,
         b_sim=b_sim,
         kappa=kappa,
+        kappa_g=kappa_g,
+        p_em=p_em,
+        p_esm=p_esm,
         solver=solver,
     )
 
@@ -1476,7 +1515,6 @@ def plot_risk_con(
         RC = RC / np.sum(RC)
 
     if asset_classes is not None and classes_col is not None:
-        A = asset_classes.copy()
         B = pd.DataFrame(RC, index=X)
         A = pd.merge(A, B, left_on=classes[0], right_index=True, how="left")
         A = A.groupby([col]).sum()[0]
@@ -1508,6 +1546,9 @@ def plot_risk_con(
                 beta=beta,
                 b_sim=b_sim,
                 kappa=kappa,
+                kappa_g=kappa_g,
+                p_em=p_em,
+                p_esm=p_esm,
                 solver=solver,
             )
 
@@ -1520,8 +1561,8 @@ def plot_risk_con(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -1541,6 +1582,8 @@ def plot_factor_risk_con(
     b_sim=None,
     kappa=0.30,
     kappa_g=None,
+    p_em=2,
+    p_esm=2,
     solver="CLARABEL",
     feature_selection="stepwise",
     stepwise="Forward",
@@ -1584,10 +1627,12 @@ def plot_factor_risk_con(
 
         - 'MV': Standard Deviation.
         - 'KT': Square Root Kurtosis.
+        - 'EM': p_em Root of Even Moment of Order 2 * p_em.
         - 'MAD': Mean Absolute Deviation.
         - 'GMD': Gini Mean Difference.
         - 'MSV': Semi Standard Deviation.
         - 'SKT': Square Root Semi Kurtosis.
+        - 'ESM': p_esm Root of Even Semi Moment of Order 2 * p_esm.
         - 'FLPM': First Lower Partial Moment (Omega Ratio).
         - 'SLPM': Second Lower Partial Moment (Sortino Ratio).
         - 'CVaR': Conditional Value at Risk.
@@ -1624,6 +1669,10 @@ def plot_factor_risk_con(
     kappa_g : float, optional
         Deformation parameter of RLVaR for gains, must be between 0 and 1.
         The default is None.
+    p_em : int, optional
+        Order of the Even Moment of order 2 * p_em. It must be an integer higher equal than 2. The default value is 2.
+    p_esm : int, optional
+        Order of the Even Semi Moment of order 2 * p_esm. It must be an integer higher equal than 2. The default value is 2.
     solver: str, optional
         Solver available for CVXPY that supports power cone programming. Used to calculate RLVaR and RLDaR.
         The default value is 'CLARABEL'.
@@ -1711,7 +1760,7 @@ def plot_factor_risk_con(
                                      t_factor=252,
                                      ax=None)
 
-    .. image:: images/Risk_Con_RF.png
+    .. image:: ../images/Risk_Con_RF.png
 
     ::
 
@@ -1730,7 +1779,7 @@ def plot_factor_risk_con(
                                      t_factor=252,
                                      ax=None)
 
-    .. image:: images/Risk_Con_PC.png
+    .. image:: ../images/Risk_Con_PC.png
 
     """
 
@@ -1738,29 +1787,29 @@ def plot_factor_risk_con(
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if cov is None:
         cov = returns.cov()
     elif isinstance(cov, pd.DataFrame):
         if cov.index.tolist() != cov.columns.tolist():
             raise ValueError(
-                "cov must be a square DataFrame with samen labels in indexes and columns."
+                "cov must be a square DataFrame with samen labels in indexes and columns"
             )
         elif cov.index.tolist() != w_.index.tolist():
-            raise ValueError("cov and w must have the same assets.")
+            raise ValueError("cov and w must have the same assets")
     else:
-        raise ValueError("cov must be a square DataFrame.")
+        raise ValueError("cov must be a square DataFrame")
 
     if beta is None:
         beta = alpha
@@ -1800,6 +1849,12 @@ def plot_factor_risk_con(
         title += ", $\\kappa = $" + "{0:.2}".format(kappa)
     if rm in ["RLVaR", "RLDaR", "RVRG"]:
         title += ", $\\kappa = $" + "{0:.2}".format(kappa_g)
+    if rm in ["EM"]:
+        title += " of Order {}".format(int(p_em))
+        title = title[:6] + "{}-th ".format(int(p_em)) + title[6:]
+    if rm in ["ESM"]:
+        title += " of Order {}".format(int(p_esm))
+        title = title[:6] + "{}-th ".format(int(p_esm)) + title[6:]
 
     title += ") Contribution per "
     if feature_selection == "PCR":
@@ -1824,6 +1879,9 @@ def plot_factor_risk_con(
         beta=beta,
         b_sim=b_sim,
         kappa=kappa,
+        kappa_g=kappa_g,
+        p_em=p_em,
+        p_esm=p_esm,
         solver=solver,
         feature_selection=feature_selection,
         stepwise=stepwise,
@@ -1870,6 +1928,9 @@ def plot_factor_risk_con(
                 beta=beta,
                 b_sim=b_sim,
                 kappa=kappa,
+                kappa_g=kappa_g,
+                p_em=p_em,
+                p_esm=p_esm,
                 solver=solver,
             )
 
@@ -1882,8 +1943,8 @@ def plot_factor_risk_con(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -1950,29 +2011,29 @@ def plot_hist(
                           width=10,
                           ax=None)
 
-    .. image:: images/Histogram.png
+    .. image:: ../images/Histogram.png
 
 
     """
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if ax is None:
         fig = plt.gcf()
@@ -2082,8 +2143,8 @@ def plot_hist(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -2158,29 +2219,29 @@ def plot_range(
                            width=10,
                            ax=None)
 
-    .. image:: images/Range.png
+    .. image:: ../images/Range.png
 
 
     """
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if beta is None:
         beta = alpha
@@ -2287,7 +2348,7 @@ def plot_range(
         "Range :" + "{0:.2%}".format(risk[5]),
     ]
 
-    colors = [
+    colors_list = [
         "darkorange",
         "limegreen",
         "mediumvioletred",
@@ -2302,12 +2363,12 @@ def plot_range(
     for i in df.index:
         x1 = df.loc[i, "lower"]
         x2 = df.loc[i, "upper"]
-        y1 = (len(colors) + 1 - j) * y_max / 9
+        y1 = (len(colors_list) + 1 - j) * y_max / 9
         ax.vlines(
             x=x1,
             ymin=0,
             ymax=y1,
-            color=colors[j - 1],
+            color=colors_list[j - 1],
             alpha=1,
             linewidth=1,
             linestyles="dashed",
@@ -2316,14 +2377,16 @@ def plot_range(
             x=x2,
             ymin=0,
             ymax=y1,
-            color=colors[j - 1],
+            color=colors_list[j - 1],
             alpha=1,
             linewidth=1,
             linestyles="dashed",
         )
-        ax.scatter(y=y1, x=x1, s=50, color=colors[j - 1], alpha=1, label=label[j - 1])
-        ax.scatter(y=y1, x=x2, s=50, color=colors[j - 1], alpha=1)
-        newline([x1, y1], [x2, y1], color=colors[j - 1])
+        ax.scatter(
+            y=y1, x=x1, s=50, color=colors_list[j - 1], alpha=1, label=label[j - 1]
+        )
+        ax.scatter(y=y1, x=x2, s=50, color=colors_list[j - 1], alpha=1)
+        newline([x1, y1], [x2, y1], color=colors_list[j - 1])
         j += 1
 
     ax.set(ylim=(0, y_max))
@@ -2342,8 +2405,8 @@ def plot_range(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -2408,29 +2471,29 @@ def plot_drawdown(
                               width=10,
                               ax=None)
 
-    .. image:: images/Drawdown.png
+    .. image:: ../images/Drawdown.png
 
 
     """
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if ax is None:
         fig = plt.gcf()
@@ -2458,7 +2521,7 @@ def plot_drawdown(
             axes.append(fig.add_subplot(gs[0]))
             axes.append(fig.add_subplot(gs[1]))
         else:
-            raise TypeError("ax must be a matplotlib axes object.")
+            raise TypeError("ax must be a matplotlib axes object")
 
     index = returns.index.tolist()
     a = returns.to_numpy() @ w_.to_numpy()
@@ -2518,7 +2581,7 @@ def plot_drawdown(
     formatter = mdates.DateFormatter("%Y-%m")
     for i in axes:
         i.clear()
-        i.plot_date(index, data[j], "-", color=color1[j])
+        i.plot(index, data[j], "-", color=color1[j])
         if j == 1:
             i.fill_between(index, 0, data[j], facecolor=color1[j], alpha=0.3)
             for k in range(0, len(risk)):
@@ -2536,8 +2599,8 @@ def plot_drawdown(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -2627,28 +2690,28 @@ def plot_table(
                            alpha=0.05,
                            ax=None)
 
-    .. image:: images/Port_Table.png
+    .. image:: ../images/Port_Table.png
 
 
     """
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if ax is None:
         fig = plt.gcf()
@@ -2818,8 +2881,8 @@ def plot_table(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -2958,24 +3021,24 @@ def plot_clusters(
                               dendrogram=True,
                               ax=None)
 
-    .. image:: images/Assets_Clusters.png
+    .. image:: ../images/Assets_Clusters.png
 
 
     """
 
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if custom_cov is not None:
         if isinstance(custom_cov, pd.DataFrame):
             if custom_cov.index.tolist() != custom_cov.columns.tolist():
                 raise ValueError(
-                    "custom_cov must be a square DataFrame with samen labels in indexes and columns."
+                    "custom_cov must be a square DataFrame with samen labels in indexes and columns"
                 )
             elif returns.columns.tolist() != custom_cov.index.tolist():
-                raise ValueError("returns and custom_cov must have the same assets.")
+                raise ValueError("returns and custom_cov must have the same assets")
         else:
-            raise ValueError("custom_cov must be a square DataFrame.")
+            raise ValueError("custom_cov must be a square DataFrame")
 
     width_ratios_1 = [0.25, 0.7, 0.05]
     height_ratios_1 = [0.27, 0.73]
@@ -2985,7 +3048,7 @@ def plot_clusters(
         fig = plt.gcf()
         ax = fig.gca()
         ax.axis("off")
-        if dendrogram == True:
+        if dendrogram is True:
             gs = GridSpec(
                 nrows=2,
                 ncols=3,
@@ -3009,7 +3072,7 @@ def plot_clusters(
     else:
         ax.axis("off")
         fig = ax.get_figure()
-        if dendrogram == True:
+        if dendrogram is True:
             if isinstance(ax, plt.Axes):
                 if hasattr(ax, "get_subplotspec"):
                     subplot_spec = ax.get_subplotspec()
@@ -3034,7 +3097,7 @@ def plot_clusters(
                     for j in range(3):
                         axes.append(fig.add_subplot(gs[i, j]))
             else:
-                raise TypeError("ax must be a matplotlib axes object.")
+                raise TypeError("ax must be a matplotlib axes object")
         else:
             if isinstance(ax, plt.Axes):
                 if hasattr(ax, "get_subplotspec"):
@@ -3058,13 +3121,13 @@ def plot_clusters(
                     for j in range(2):
                         axes.append(fig.add_subplot(gs[i, j]))
             else:
-                raise TypeError("ax must be a matplotlib axes object.")
+                raise TypeError("ax must be a matplotlib axes object")
 
     for i in range(len(axes) - 1):
         axes[i].grid(False)
         axes[i].axis("off")
 
-    if dendrogram == True:
+    if dendrogram is True:
         (
             ax0,
             axcolor,
@@ -3199,7 +3262,7 @@ def plot_clusters(
     # axcolor = fig.add_axes([.87, 0.15, 0.02, 0.55])
     ax0.get_figure().colorbar(im, cax=axcolor)
 
-    if dendrogram == True:
+    if dendrogram is True:
         # ax1 = fig.add_axes([0.2, 0.71, 0.55, 0.2])
         ax1 = axes[1]
         if show_clusters is False:
@@ -3211,8 +3274,8 @@ def plot_clusters(
             nodes.sort()
             leaders_threshold = nodes[np.max(L) + 1]
             color_threshold = np.max(leaders_threshold)
-            colors = af.color_list(k)
-            hr.set_link_color_palette(colors)
+            colors_list = af.color_list(k)
+            hr.set_link_color_palette(colors_list)
 
         hr.dendrogram(
             clustering,
@@ -3240,7 +3303,7 @@ def plot_clusters(
                     (xmin - 4, 0),
                     xmax - xmin + 8,
                     ymax * 1.005,
-                    facecolor=colors[i],  # coll.get_color()[0],
+                    facecolor=colors_list[i],  # coll.get_color()[0],
                     alpha=0.2,
                     edgecolor="none",
                 )
@@ -3257,7 +3320,7 @@ def plot_clusters(
         # ax2 = fig.add_axes([0.0, 0.15, 0.2, 0.55])
         ax2 = axes[3]
         if show_clusters is True:
-            hr.set_link_color_palette(colors)
+            hr.set_link_color_palette(colors_list)
 
         hr.dendrogram(
             clustering,
@@ -3287,7 +3350,7 @@ def plot_clusters(
                     (0, ymin - 4),
                     xmax * 1.05,
                     ymax - ymin + 8,
-                    facecolor=colors[i],  # coll.get_color()[0],
+                    facecolor=colors_list[i],  # coll.get_color()[0],
                     alpha=0.2,
                     edgecolor="none",
                 )
@@ -3310,15 +3373,15 @@ def plot_clusters(
             + " linkage)"
         )
 
-    if dendrogram == True:
+    if dendrogram is True:
         ax1.set_title(title)
-    elif dendrogram == False:
+    elif dendrogram is False:
         ax0.set_title(title)
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -3446,23 +3509,23 @@ def plot_dendrogram(
                                 leaf_order=True,
                                 ax=None)
 
-    .. image:: images/Assets_Dendrogram.png
+    .. image:: ../images/Assets_Dendrogram.png
 
 
     """
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if custom_cov is not None:
         if isinstance(custom_cov, pd.DataFrame):
             if custom_cov.index.tolist() != custom_cov.columns.tolist():
                 raise ValueError(
-                    "custom_cov must be a square DataFrame with samen labels in indexes and columns."
+                    "custom_cov must be a square DataFrame with samen labels in indexes and columns"
                 )
             elif returns.columns.tolist() != custom_cov.index.tolist():
-                raise ValueError("returns and custom_cov must have the same assets.")
+                raise ValueError("returns and custom_cov must have the same assets")
         else:
-            raise ValueError("custom_cov must be a square DataFrame.")
+            raise ValueError("custom_cov must be a square DataFrame")
 
     if ax is None:
         fig = plt.gcf()
@@ -3527,8 +3590,8 @@ def plot_dendrogram(
         nodes.sort()
         leaders_threshold = nodes[np.max(L) + 1]
         color_threshold = np.max(leaders_threshold)
-        colors = af.color_list(k)  # color list
-        hr.set_link_color_palette(colors)
+        colors_list = af.color_list(k)  # color list
+        hr.set_link_color_palette(colors_list)
 
     hr.dendrogram(
         clustering, color_threshold=color_threshold, above_threshold_color="grey", ax=ax
@@ -3551,7 +3614,7 @@ def plot_dendrogram(
                 (xmin - 4, 0),
                 xmax - xmin + 8,
                 ymax * 1.005,
-                facecolor=colors[i],  # coll.get_color()[0],
+                facecolor=colors_list[i],  # coll.get_color()[0],
                 alpha=0.2,
                 edgecolor="none",
             )
@@ -3577,8 +3640,8 @@ def plot_dendrogram(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -3731,23 +3794,23 @@ def plot_network(
                              kind='kamada',
                              ax=None)
 
-    .. image:: images/Assets_Network.png
+    .. image:: ../images/Assets_Network.png
 
 
     """
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if custom_cov is not None:
         if isinstance(custom_cov, pd.DataFrame):
             if custom_cov.index.tolist() != custom_cov.columns.tolist():
                 raise ValueError(
-                    "custom_cov must be a square DataFrame with samen labels in indexes and columns."
+                    "custom_cov must be a square DataFrame with samen labels in indexes and columns"
                 )
             elif returns.columns.tolist() != custom_cov.index.tolist():
-                raise ValueError("returns and custom_cov must have the same assets.")
+                raise ValueError("returns and custom_cov must have the same assets")
         else:
-            raise ValueError("custom_cov must be a square DataFrame.")
+            raise ValueError("custom_cov must be a square DataFrame")
 
     if ax is None:
         fig = plt.gcf()
@@ -3829,12 +3892,12 @@ def plot_network(
     # Plotting
     nx.draw_networkx_edges(G, pos=pos, ax=ax, edge_color="grey")
 
-    if node_labels == True:
+    if node_labels is True:
         nx.draw_networkx_labels(G, pos=pos, ax=ax, bbox=label_options, **font_options)
 
-    colors = af.color_list(k)
+    colors_list = af.color_list(k)
 
-    for i, color in zip(clusters.keys(), colors):
+    for i, color in zip(clusters.keys(), colors_list):
         nx.draw_networkx_nodes(
             G, pos=pos, nodelist=clusters[i], node_color=color, ax=ax, **node_options
         )
@@ -3871,8 +3934,8 @@ def plot_network(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -4022,39 +4085,39 @@ def plot_network_allocation(
                                         kind='kamada',
                                         ax=None)
 
-    .. image:: images/Assets_Network_Allocation.png
+    .. image:: ../images/Assets_Network_Allocation.png
 
 
     """
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if custom_cov is not None:
         if isinstance(custom_cov, pd.DataFrame):
             if custom_cov.index.tolist() != custom_cov.columns.tolist():
                 raise ValueError(
-                    "custom_cov must be a square DataFrame with samen labels in indexes and columns."
+                    "custom_cov must be a square DataFrame with samen labels in indexes and columns"
                 )
             elif returns.columns.tolist() != custom_cov.index.tolist():
-                raise ValueError("returns and custom_cov must have the same assets.")
+                raise ValueError("returns and custom_cov must have the same assets")
         else:
-            raise ValueError("custom_cov must be a square DataFrame.")
+            raise ValueError("custom_cov must be a square DataFrame")
 
     if ax is None:
         fig = plt.gcf()
@@ -4121,7 +4184,7 @@ def plot_network_allocation(
     }
 
     node_w = np.abs(w_) * max_node_size / np.abs(w_).sum().item()
-    if node_labels == True:
+    if node_labels is True:
         labels = {}
         labels_pos = {}
         for node in G.nodes():
@@ -4158,13 +4221,13 @@ def plot_network_allocation(
             ax=ax,
             node_size=node_w.loc[clusters_3.index],
         )
-        if node_labels == True:
+        if node_labels is True:
             for node in G.nodes():
                 if node in list(clusters_3.index):
                     labels[node] = node
                     labels_pos[node] = pos[node] + np.array([label_h, label_v])
 
-    if node_labels == True:
+    if node_labels is True:
         nx.draw_networkx_labels(
             G, pos=labels_pos, labels=labels, ax=ax, bbox=label_options, **font_options
         )
@@ -4197,8 +4260,8 @@ def plot_network_allocation(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -4343,23 +4406,23 @@ def plot_clusters_network(
                                       max_k=10,
                                       ax=None)
 
-    .. image:: images/Assets_Clusters_Network.png
+    .. image:: ../images/Assets_Clusters_Network.png
 
 
     """
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if custom_cov is not None:
         if isinstance(custom_cov, pd.DataFrame):
             if custom_cov.index.tolist() != custom_cov.columns.tolist():
                 raise ValueError(
-                    "custom_cov must be a square DataFrame with samen labels in indexes and columns."
+                    "custom_cov must be a square DataFrame with samen labels in indexes and columns"
                 )
             elif returns.columns.tolist() != custom_cov.index.tolist():
-                raise ValueError("returns and custom_cov must have the same assets.")
+                raise ValueError("returns and custom_cov must have the same assets")
         else:
-            raise ValueError("custom_cov must be a square DataFrame.")
+            raise ValueError("custom_cov must be a square DataFrame")
 
     if ax is None:
         fig = plt.gcf()
@@ -4446,7 +4509,7 @@ def plot_clusters_network(
             )
         )
 
-    colors = af.color_list(k)
+    colors_list = af.color_list(k)
 
     label_options = {"ec": "k", "fc": "white", "alpha": 0.7}
 
@@ -4459,13 +4522,13 @@ def plot_clusters_network(
         "font_color": "k",
     }
     # Nodes colored by cluster
-    for key, clr in zip(clusters.keys(), colors):
+    for key, clr in zip(clusters.keys(), colors_list):
         nx.draw_networkx_nodes(
             G, pos=pos, nodelist=clusters[key], node_color=clr, **node_options
         )
     nx.draw_networkx_edges(G, pos=pos, ax=ax, edge_color="grey")
 
-    if node_labels == True:
+    if node_labels is True:
         nx.draw_networkx_labels(G, pos=pos, ax=ax, bbox=label_options, **font_options)
 
     ax.set_yticks([])
@@ -4487,8 +4550,8 @@ def plot_clusters_network(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -4635,39 +4698,39 @@ def plot_clusters_network_allocation(
                                                  max_k=10,
                                                  ax=None)
 
-    .. image:: images/Assets_Clusters_Network_Allocation.png
+    .. image:: ../images/Assets_Clusters_Network_Allocation.png
 
 
     """
     if not isinstance(returns, pd.DataFrame):
-        raise ValueError("returns must be a DataFrame")
+        raise TypeError("returns must be a DataFrame")
 
     if not isinstance(w, pd.DataFrame):
         if isinstance(w, pd.Series):
             w_ = w.to_frame()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
     else:
         if w.shape[0] == 1:
             w_ = w.T.copy()
         elif w.shape[1] == 1:
             w_ = w.copy()
         else:
-            raise ValueError("w must be a one column DataFrame or Series")
+            raise TypeError("w must be a column DataFrame or Series")
 
     if returns.columns.tolist() != w_.index.tolist():
-        raise ValueError("returns and w must have same assets.")
+        raise ValueError("returns and w must have same assets")
 
     if custom_cov is not None:
         if isinstance(custom_cov, pd.DataFrame):
             if custom_cov.index.tolist() != custom_cov.columns.tolist():
                 raise ValueError(
-                    "custom_cov must be a square DataFrame with samen labels in indexes and columns."
+                    "custom_cov must be a square DataFrame with samen labels in indexes and columns"
                 )
             elif returns.columns.tolist() != custom_cov.index.tolist():
-                raise ValueError("returns and custom_cov must have the same assets.")
+                raise ValueError("returns and custom_cov must have the same assets")
         else:
-            raise ValueError("custom_cov must be a square DataFrame.")
+            raise ValueError("custom_cov must be a square DataFrame")
 
     if ax is None:
         fig = plt.gcf()
@@ -4803,7 +4866,7 @@ def plot_clusters_network_allocation(
 
     nx.draw_networkx_edges(G, pos=pos, ax=ax, edge_color="grey")
 
-    if node_labels == True:
+    if node_labels is True:
         label_w = list(w_.loc[np.abs(w_.iloc[:, 0]) >= 1e-6].index)
         labels = {}
         labels_pos = {}
@@ -4812,7 +4875,7 @@ def plot_clusters_network_allocation(
                 labels[node] = node
                 labels_pos[node] = pos[node] + np.array([label_h, label_v])
 
-    if node_labels == True:
+    if node_labels is True:
         nx.draw_networkx_labels(
             G, pos=labels_pos, labels=labels, ax=ax, bbox=label_options, **font_options
         )
@@ -4836,8 +4899,8 @@ def plot_clusters_network_allocation(
 
     try:
         fig.set_layout_engine(layout="constrained")
-    except:
-        pass
+    except Exception as e:
+        print(f"An error occurred: {e}")
 
     return ax
 
@@ -4929,7 +4992,7 @@ def plot_BrinsonAttribution(
             ax=None
             )
 
-    .. image:: images/BrinAttr_Plot.png
+    .. image:: ../images/BrinAttr_Plot.png
 
 
     """
@@ -5045,7 +5108,7 @@ def plot_BrinsonAttribution(
 
         try:
             fig.set_layout_engine(layout="constrained")
-        except:
-            pass
+        except Exception as e:
+            print(f"An error occurred: {e}")
 
     return ax

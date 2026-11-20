@@ -15,7 +15,7 @@ Changelog
 
 .. raw:: html
     
-    <a href="https://www.paypal.com/ncp/payment/GN55W4UQ7VAMN" target="_blank">
+    <a href="https://portfoliooptimization.org/course/course.html" target="_blank">
         <button style="padding:10px 20px; font-size:16px; background-color: #32CD32; color:white; border:none; border-radius:5px; cursor:pointer; font-weight: bold;">
             Enroll in the Portfolio Optimization with Python Course
         </button>
@@ -24,7 +24,8 @@ Changelog
     <br>
 
 .. image:: https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86
- :target: https://github.com/sponsors/dcajasn
+   :target: https://github.com/sponsors/dcajasn
+   :height: 1.75em
 
 .. raw:: html
    
@@ -34,6 +35,30 @@ Changelog
 
     <a href='https://ko-fi.com/B0B833SXD' target='_blank'><img height='36'style='border:0px;height:36px;' src='https://cdn.ko-fi.com/cdn/kofi1.png?v=2' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
 
+Version 7.4.0
+=============
+
+- Removed the vendored ``lib/spectra-1.0.1`` dependency. It backed a single
+  function, ``cpp_k_eigh``, which is now ``rp.k_eigh`` implemented with
+  ``scipy.sparse.linalg.eigsh``. On the cokurtosis block that the kurtosis and
+  semi kurtosis models actually feed it (60 assets, a 3600 x 3600 matrix,
+  k = 120), scipy is about 2.6x faster and returns the same eigenvalues.
+  ``rp.k_eigh`` keeps its name, signature and descending eigenvalue order, so
+  the public API is unchanged.
+- Solve several bugs related to data types and input validation.
+
+Version 7.3.0
+=============
+
+- Add the Entropy Pooling model that allows users to incorporate their views in the probabilities of 
+  sample scenarios and then estimate the mean vector, covariance matrix, coskewness tensor and 
+  cokurtosis matrix based on the distorted probabilities.
+- Add the mean variance skewness kurtosis (MVSK) portfolio model (semidefinite relaxation), that 
+  allows users to incorporate higher moments in the portfolio optimization problem.
+- Add two new convex risk measures: Even Moments and Even Semi Moments, to the Portfolio object.
+- Add two new risk measures: Even Moments and Even Semi Moments, to the HCPortfolio object.
+- Add helper functions that allows users to calculate covariance matrix, coskewness tensor and 
+  cokurtosis matrix based on the probabilities of sample scenarios.
 
 Version 7.2.0
 =============
