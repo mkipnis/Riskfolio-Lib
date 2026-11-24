@@ -1,0 +1,117 @@
+/* =========================
+   GLOBAL DARK THEME WITH BORDERS
+   ========================= */
+
+/* Base backgrounds and borders */
+body, .container-fluid, .main-content-row, .panel-col, .panel, .panel-content {
+    background-color: #0e2537 !important;
+    /*border: 1px solid #2a2f42 !important;
+    border-radius: 4px !important;*/
+}
+
+/* =========================
+   Horizontal form rows
+   ========================= */
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+
+.form-row label {
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 300;
+}
+
+
+/* =========================
+   Navbar
+   ========================= */
+.custom-navbar {
+    background-color: #0e2537 !important;
+    border: none !important;
+    padding-bottom: 2px !important; /* reduce bottom padding */
+    padding-top: 10px !important;    /* optional: keep top padding slightly larger */
+}
+
+.divider {
+    margin-top: 0 !important;   /* remove spacing above */
+    margin-bottom: 10px;        /* optional: keep spacing below */
+}
+
+/* =========================
+   Darken all Radix popups
+   ========================= */
+
+/* Target the Radix portal wrapper */
+div[data-radix-popper-content-wrapper] {
+    background-color: #0e2537 !important; /* dark background for all popups */
+    border: 1px solid #2a2f42 !important; /* optional border */
+    border-radius: 2px !important;        /* optional corner rounding */
+    color: white !important;              /* text color */
+    z-index: 10000 !important;
+}
+
+/* Dropdown & DatePicker popup content inside portal */
+div[data-radix-popper-content-wrapper] .dash-dropdown-content,
+div[data-radix-popper-content-wrapper] .dash-datepicker-popup {
+    background-color: #0e2537 !important;
+    border: 1px solid #2a2f42 !important;
+    border-radius: 0 !important; /* remove corner dots if desired */
+    color: white !important;
+}
+
+/* Calendar tiles inside DatePicker popup */
+div[data-radix-popper-content-wrapper] .dash-datepicker-popup .react-calendar__tile {
+    background-color: #0e2537 !important;
+    color: white !important;
+}
+
+/* Hover / active day */
+div[data-radix-popper-content-wrapper] .dash-datepicker-popup .react-calendar__tile:hover,
+div[data-radix-popper-content-wrapper] .dash-datepicker-popup .react-calendar__tile--active {
+    background-color: #1a3b55 !important;
+    color: white !important;
+}
+
+.dash-input-element {
+    text-align: right !important;  /* force right alignment */
+    color: inherit;                 /* inherit the text color from container */
+    background-color: transparent;  /* keep dark background */
+    text-transform: uppercase;  /* visual only */
+    text-weight: bold;
+    font-weight: 400 !important;
+}
+
+.dash-input-stepper {
+    display: none !important;
+}
+
+/* =========================
+   Panel labels
+   ========================= */
+.panel-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 10px;
+    font-size: 18px;
+    padding: 10px 0 0 10px;
+    color: #f09d08;
+}
+.panel-label label {
+    width: 200px;
+    font-weight: 500;
+    gap: 5px;
+    font-size: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 5px 0 0 5px;
+    color: #f09d08;
+}

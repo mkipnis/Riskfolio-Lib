@@ -1,0 +1,14 @@
+[
+  {"symbol": "XLB", "name": "Materials Select Sector SPDR"},
+  {"symbol": "XLC", "name": "Communication Services Select Sector SPDR"},
+  {"symbol": "XLE", "name": "Energy Select Sector SPDR"},
+  {"symbol": "XLF", "name": "Financial Select Sector SPDR"},
+  {"symbol": "XLI", "name": "Industrial Select Sector SPDR"},
+  {"symbol": "XLK", "name": "Technology Select Sector SPDR"},
+  {"symbol": "XLP", "name": "Consumer Staples Select Sector SPDR"},
+  {"symbol": "XLU", "name": "Utilities Select Sector SPDR"},
+  {"symbol": "XLV", "name": "Health Care Select Sector SPDR"},
+  {"symbol": "XLY", "name": "Consumer Discretionary Select Sector SPDR"},
+  {"symbol": "XRT", "name": "SPDR S&P Retail ETF"},
+  {"symbol": "XTN", "name": "SPDR S&P Transportation ETF"}
+]
